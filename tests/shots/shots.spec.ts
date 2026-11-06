@@ -6,6 +6,9 @@ test("landing", async ({ page }, info) => {
   await page.goto("/");
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `screenshots/${info.project.name}-landing-top.png` });
+  for (let y = 0; y < 9000; y += 500) { await page.mouse.wheel(0, 500); await page.waitForTimeout(120); }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(500);
   await page.screenshot({ path: `screenshots/${info.project.name}-landing-full.png`, fullPage: true });
   await page.getByRole("button", { name: "العربية" }).first().click();
   await page.waitForTimeout(600);

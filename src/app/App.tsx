@@ -57,7 +57,7 @@ export default function App({ demo = false }: { demo?: boolean }) {
   const tabs: { id: Tab; icon: typeof Home }[] = [{ id: "home", icon: Home }, { id: "map", icon: MapPin }, { id: "post", icon: Plus }, { id: "chat", icon: MessageCircle }, { id: "me", icon: User }];
 
   return (
-    <div ref={shell} dir={rtl ? "rtl" : "ltr"} className="relative flex h-full w-full flex-col overflow-hidden bg-background">
+    <div ref={shell} dir={rtl ? "rtl" : "ltr"} className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground">
       <header className="relative flex items-center gap-3 bg-primary px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] text-primary-foreground">
         <div className="zellige absolute inset-0 opacity-60" />
         <div className="relative flex flex-1 items-center gap-2.5">
@@ -97,7 +97,7 @@ export default function App({ demo = false }: { demo?: boolean }) {
         {tab === "chat" && (
           Object.keys(s.chats).length ? (
             <div className="space-y-3">{Object.keys(s.chats).map((id) => { const x = all.find((a) => a.id === +id); if (!x) return null; const last = s.chats[+id].slice(-1)[0];
-              return <button key={id} onClick={() => setChat(+id)} className="flex w-full items-center gap-3 rounded-2xl bg-card p-3.5 text-start shadow-sm ring-1 ring-border"><Avatar a={x.av} /><div className="min-w-0 flex-1"><div className="font-semibold">{x.who}</div><div className="truncate text-sm text-muted-foreground">{last?.t ?? x.title}</div></div><ChevronRight size={16} className="text-muted-foreground rtl:rotate-180" /></button>; })}</div>
+              return <button key={id} onClick={() => setChat(+id)} className="flex w-full items-center gap-3 rounded-2xl bg-card p-3.5 text-start shadow-sm ring-1 ring-border"><Avatar a={x.av} /><div className="min-w-0 flex-1"><div className="font-semibold"><bdi>{x.who}</bdi></div><div className="truncate text-sm text-muted-foreground">{last?.t ?? x.title}</div></div><ChevronRight size={16} className="text-muted-foreground rtl:rotate-180" /></button>; })}</div>
           ) : <div className="mt-20 text-center text-muted-foreground"><MessageCircle className="mx-auto mb-3 opacity-40" size={44} /><p className="mx-auto max-w-[240px] text-sm">{t("nochat")}</p></div>
         )}
         {tab === "me" && (
@@ -127,7 +127,7 @@ export default function App({ demo = false }: { demo?: boolean }) {
       <Sheet open={!!item} onOpenChange={(o) => !o && setSel(null)} container={container} title={item?.title ?? ""}>
         {item && (
           <div>
-            <div className="flex items-center gap-3"><Avatar a={item.av} big /><div><div className="font-semibold">{item.who}</div><div className="mt-1 flex flex-wrap gap-1.5">{item.ver && <Badge><BadgeCheck size={11} />{t("verified")}</Badge>}{item.sup && <Badge variant="saffron">★ {t("super")}</Badge>}</div></div></div>
+            <div className="flex items-center gap-3"><Avatar a={item.av} big /><div><div className="font-semibold"><bdi>{item.who}</bdi></div><div className="mt-1 flex flex-wrap gap-1.5">{item.ver && <Badge><BadgeCheck size={11} />{t("verified")}</Badge>}{item.sup && <Badge variant="saffron">★ {t("super")}</Badge>}</div></div></div>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
             <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
               <Info icon={<Star size={15} className="fill-saffron text-saffron" />} v={`${item.rating} (${item.n} ${t("reviews")})`} />
@@ -173,7 +173,7 @@ function ListingCard({ x, onClick }: { x: Item; onClick: () => void }) {
       <Avatar a={x.av} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-semibold leading-tight">{emoji} {x.title}</h3>
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{x.who}{x.ver && <BadgeCheck size={13} className="text-primary" />}{x.sup && <Badge variant="saffron">★ {t("super")}</Badge>}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><bdi>{x.who}</bdi>{x.ver && <BadgeCheck size={13} className="text-primary" />}{x.sup && <Badge variant="saffron">★ {t("super")}</Badge>}</div>
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Star size={12} className="fill-saffron text-saffron" />{x.rating} <span className="opacity-60">({x.n})</span></span>
           <span className="flex items-center gap-1"><MapPin size={12} />{x.km} km</span>
@@ -231,13 +231,14 @@ function MapView({ items, center, radius, onPick }: { items: Item[]; center: [nu
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!el.current) return;
-    const map = L.map(el.current, { zoomControl: false, attributionControl: false }).setView(center, radius > 3 ? Math.max(8, Math.round(14 - Math.log2(radius))) : 14);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(map);
+    const map = L.map(el.current, { zoomControl: false, attributionControl: true }).setView(center, radius > 3 ? Math.max(8, Math.round(14 - Math.log2(radius))) : 14);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
     L.circle(center, { radius: radius * 1000, color: "#0b3d33", weight: 1.5, fillColor: "#f2b84b", fillOpacity: .08 }).addTo(map);
     items.forEach((x) => {
       const emoji = CATS.find((c) => c.id === x.cat)!.emoji;
       L.marker([x.lat, x.lng], { icon: L.divIcon({ className: "", iconSize: [38, 38], html: `<div style="width:38px;height:38px;display:grid;place-items:center;font-size:19px;background:#fffdf8;border:2px solid #0b3d33;border-radius:50% 50% 50% 8px;transform:rotate(-45deg)"><span style="transform:rotate(45deg)">${emoji}</span></div>` }) }).addTo(map).on("click", () => onPick(x.id));
     });
+    if (items.length) map.fitBounds(L.latLngBounds(items.map((x) => [x.lat, x.lng] as [number, number])).pad(0.25), { maxZoom: 15 });
     setTimeout(() => map.invalidateSize(), 50);
     return () => { map.remove(); };
   }, [items, center, radius, onPick]);

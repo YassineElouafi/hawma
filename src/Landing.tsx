@@ -41,7 +41,7 @@ export default function Landing() {
         <div className="pointer-events-none absolute -top-40 start-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-saffron/20 blur-[120px]" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 lg:grid-cols-[1.15fr_.85fr]">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}>
-            <Badge variant="saffron" className="mb-6 px-3.5 py-1.5 text-xs"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />{t("hero_badge")}</Badge>
+            <Badge className="mb-6 bg-saffron/15 px-3.5 py-1.5 text-xs text-saffron ring-1 ring-saffron/30"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />{t("hero_badge")}</Badge>
             <h1 className="font-display text-[clamp(3rem,8vw,6.2rem)] font-semibold leading-[.95] tracking-tight">{t("hero_h1a")}<br /><span className="italic text-saffron">{t("hero_h1b")}</span></h1>
             <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/70">{t("hero_p")}</p>
             <div className="mt-9 flex flex-wrap gap-3">
