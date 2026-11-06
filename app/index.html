@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hawma</title>
+<meta name="theme-color" content="#0F5C4D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--g:#0F5C4D;--g2:#0A4237;--y:#F4B942;--c:#E2552D;--bg:#FBF7F0;--ink:#1B2A27;--mut:#6a7773}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;background:var(--bg);position:relative}
+header{background:var(--g);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+header .logo{font-weight:800;font-size:20px;flex:1}
+header .logo b{color:var(--y)}
+header select{background:#ffffff22;color:#fff;border:0;border-radius:99px;padding:6px 10px;font:inherit;font-size:13px}
+header select option{color:#000}
+main{flex:1;overflow:auto;padding:14px 14px 90px}
+.tabs{position:absolute;bottom:0;inset-inline:0;display:flex;background:#fff;border-top:1px solid #eadfc9;padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;border:0;background:none;padding:9px 0 8px;font:inherit;font-size:11px;color:var(--mut);cursor:pointer}
+.tabs button span{display:block;font-size:20px}
+.tabs button.on{color:var(--g);font-weight:700}
+.search{width:100%;padding:13px 16px;border-radius:99px;border:1px solid #e3d9c4;font:inherit;background:#fff}
+.chips{display:flex;gap:8px;overflow:auto;padding:12px 0;scrollbar-width:none}
+.chip{flex:none;border:1px solid #e3d9c4;background:#fff;border-radius:99px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--g);color:#fff;border-color:var(--g)}
+.card{background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 2px 0 #eadfc9;display:flex;gap:12px;cursor:pointer}
+.av{flex:none;width:48px;height:48px;border-radius:50%;background:var(--y);display:grid;place-items:center;font-size:24px}
+.card h3{font-size:16px}
+.card p{font-size:13px;color:var(--mut)}
+.meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:6px;color:var(--mut)}
+.price{margin-inline-start:auto;font-weight:800;color:var(--g);white-space:nowrap;font-size:14px}
+.tag{background:#e8f3ef;color:var(--g);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:600}
+.tag.o{background:#fdebe4;color:var(--c)}
+.btn{display:block;width:100%;border:0;border-radius:99px;background:var(--c);color:#fff;font:inherit;font-weight:700;padding:14px;cursor:pointer;margin-top:12px}
+.btn.alt{background:#fff;color:var(--g);box-shadow:0 0 0 2px var(--g) inset}
+.btn.wa{background:#25D366}
+#map{height:100%;min-height:420px;border-radius:18px}
+label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
+input,select,textarea{width:100%;padding:12px 14px;border:1px solid #e3d9c4;border-radius:14px;font:inherit;background:#fff}
+.sheet{position:absolute;inset:0;background:var(--bg);z-index:1000;overflow:auto;padding:16px 16px 40px}
+.sheet .back{border:0;background:none;font-size:22px;cursor:pointer;margin-bottom:6px}
+.bubble{max-width:78%;padding:10px 14px;border-radius:16px;margin:6px 0;font-size:14px;background:#fff;box-shadow:0 1px 0 #eadfc9}
+.bubble.me{margin-inline-start:auto;background:var(--g);color:#fff}
+.chat{display:flex;flex-direction:column;min-height:50vh}
+.send{display:flex;gap:8px;position:sticky;bottom:0;background:var(--bg);padding-top:8px}
+.send input{flex:1}.send button{width:auto;margin:0;padding:0 18px}
+.onb{position:absolute;inset:0;background:var(--g);color:#fff;z-index:2000;padding:28px 22px;overflow:auto}
+.onb h1{font-size:34px;margin:24px 0 8px}.onb h1 b{color:var(--y)}
+.onb p{opacity:.85;margin-bottom:10px}
+.onb label{color:#fff}.onb .btn{background:var(--y);color:#1B2A27}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.stars{color:var(--y)}
+.toast{position:absolute;bottom:80px;inset-inline:20px;background:#1B2A27;color:#fff;padding:12px 16px;border-radius:14px;z-index:3000;text-align:center;font-size:14px}
+.badge{display:flex;gap:10px;align-items:center;padding:12px;background:#fff;border-radius:14px;margin-bottom:8px;font-size:14px}
+.badge i{font-style:normal;font-size:20px}.badge em{margin-inline-start:auto;font-style:normal;font-size:12px;color:var(--mut)}
+.badge em.ok{color:var(--g);font-weight:700}
+.demo header,.demo .tabs .hide{display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ---------- i18n ---------- */
+const I18N={
+fr:{dir:'ltr',all:'Tout',search:'Rechercher un service…',home:'Accueil',map:'Carte',post:'Publier',chat:'Messages',me:'Profil',
+ c_diy:'Bricolage',c_clean:'Ménage',c_garden:'Jardin',c_tutor:'Cours',c_errand:'Courses',c_ride:'Transport',c_pet:'Animaux',c_lend:'Prêt',
+ onb_t:'Bienvenue dans ta <b>hawma</b>',onb_p:'Ton quartier, ton équipe. Choisis ta langue, ton quartier et ton rayon.',lang:'Langue',hood:'Quartier',radius:'Rayon',phone:'Téléphone (OTP envoyé)',go:'Commencer',
+ km_away:'à',book:'Réserver / discuter',share:'Partager sur WhatsApp',pay:'Paiement',cash:'Cash à la fin',mobile:'Mobile (CMI / Orange Money / inwi money)',rec:'Récurrent',once:'Une fois',weekly:'Chaque semaine',
+ title:'Titre',desc:'Description',price:'Prix (MAD)',cat:'Catégorie',freq:'Fréquence',publish:'Publier mon service',published:'Service publié ✔',
+ verified:'Vérifié',super:'SuperVoisin',reviews:'avis',dispute:'Signaler un problème',confirm:'Confirmer le service',confirmed:'Service confirmé ✔ Tu peux laisser un avis.',
+ type:'Écrire un message…',nochat:'Aucune conversation. Réserve un service pour commencer.',
+ ver:'Vérifications',v_phone:'Téléphone (OTP)',v_cin:'Carte nationale (CIN)',v_photo:'Photo de profil',done:'Fait',todo:'À faire',groups:'Mes groupes',g1:'Résidence / Immeuble',g2:'Mon quartier',join:'Rejoindre',
+ bio:'Voisin(e) sur Hawma',reset:'Réinitialiser la démo',h:'h',mad:'MAD',voice:'🎤 Note vocale (bientôt)',reply:['Salam ! Oui, je suis disponible.','Parfait, on dit demain à 17h ?','D\'accord, paiement cash à la fin 👍','Je t\'envoie ma position exacte avant de venir.']},
+ar:{dir:'rtl',all:'الكل',search:'ابحث عن خدمة…',home:'الرئيسية',map:'الخريطة',post:'انشر',chat:'الرسائل',me:'حسابي',
+ c_diy:'إصلاحات',c_clean:'تنظيف',c_garden:'حديقة',c_tutor:'دروس',c_errand:'مشاوير',c_ride:'نقل',c_pet:'حيوانات',c_lend:'إعارة',
+ onb_t:'مرحبا بك فـ<b>حومتك</b>',onb_p:'حومتك، فريقك. اختار اللغة والحي والمسافة.',lang:'اللغة',hood:'الحي',radius:'المسافة',phone:'الهاتف (غادي توصلك OTP)',go:'ابدأ',
+ km_away:'على بعد',book:'احجز / دردش',share:'شارك على واتساب',pay:'الأداء',cash:'كاش فالأخير',mobile:'بالهاتف (CMI / أورنج مني / إنوي مني)',rec:'متكرر',once:'مرة وحدة',weekly:'كل أسبوع',
+ title:'العنوان',desc:'الوصف',price:'الثمن (درهم)',cat:'الصنف',freq:'التكرار',publish:'انشر خدمتي',published:'تم النشر ✔',
+ verified:'موثّق',super:'جار ممتاز',reviews:'تقييم',dispute:'بلّغ عن مشكل',confirm:'أكّد الخدمة',confirmed:'تم تأكيد الخدمة ✔ يمكنك كتابة تقييم.',
+ type:'اكتب رسالة…',nochat:'لا توجد محادثات. احجز خدمة لتبدأ.',
+ ver:'التوثيق',v_phone:'الهاتف (OTP)',v_cin:'البطاقة الوطنية',v_photo:'صورة الحساب',done:'تم',todo:'ناقص',groups:'مجموعاتي',g1:'الإقامة / العمارة',g2:'حيّي',join:'انضم',
+ bio:'جار فحومة',reset:'إعادة ضبط العرض',h:'س',mad:'درهم',voice:'🎤 رسالة صوتية (قريبا)',reply:['السلام! نعم أنا متوفر.','مزيان، نتلاقاو غدا على 5؟','واخا، كاش فالأخير 👍','غنصيفط ليك الموقع قبل ما نجي.']},
+da:{dir:'ltr',all:'Koulchi',search:'Qelleb 3la service…',home:'Accueil',map:'Carte',post:'Nshor',chat:'Messages',me:'Profil',
+ c_diy:'Bricolage',c_clean:'Mnazzaf',c_garden:'Jnan',c_tutor:'Dourous',c_errand:'Courses',c_ride:'Naql',c_pet:'7ayawanat',c_lend:'I3ara',
+ onb_t:'Mar7ba bik f <b>7awmtek</b>',onb_p:'7awmtek, l-fari9 dyalek. Khtar logha, l-7ay w distance.',lang:'Logha',hood:'L-7ay',radius:'Distance',phone:'Numero (ghadi twsalek OTP)',go:'Bda',
+ km_away:'3la bou3d',book:'7jez / dardach',share:'Partagi f WhatsApp',pay:'Paiement',cash:'Cash f l-lakhr',mobile:'B mobile (CMI / Orange Money / inwi money)',rec:'Mkarrar',once:'Merra w7da',weekly:'Koul simana',
+ title:'3onwan',desc:'Wasf',price:'Taman (MAD)',cat:'Noua3',freq:'Takrar',publish:'Nshor service dyali',published:'Tnshar ✔',
+ verified:'M2akkad',super:'SuperVoisin',reviews:'avis',dispute:'Bellegh 3la mochkil',confirm:'2akkad service',confirmed:'Service m2akkad ✔ momkin tkteb avis.',
+ type:'Kteb message…',nochat:'Ma kayn ta conversation. 7jez service bach tbda.',
+ ver:'Vérification',v_phone:'Telephone (OTP)',v_cin:'CIN',v_photo:'Photo',done:'Tamm',todo:'Baqi',groups:'Groupes dyali',g1:'Résidence / 3imara',g2:'7ayyi',join:'Dkhol',
+ bio:'Jar f Hawma',reset:'Reset démo',h:'h',mad:'MAD',voice:'🎤 Vocal (qariban)',reply:['Salam! Iyeh, ana mawjoud.','Mzyan, ghedda 3la 5?','Wakha, cash f l-lakhr 👍','Ghansifet lik l-position qbel ma nji.']}
+};
+const CATS=[['diy','🔧'],['clean','✨'],['garden','🌿'],['tutor','📚'],['errand','🛒'],['ride','🚗'],['pet','🐾'],['lend','📦']];
+const HOODS={Maarif:[33.5883,-7.6350],'Ain Diab':[33.5950,-7.6700],Californie:[33.5590,-7.6360],Gauthier:[33.5900,-7.6200],Oasis:[33.5560,-7.6130],Agdal:[33.9916,-6.8498],Gueliz:[31.6340,-8.0100],'Hay Riad':[33.9570,-6.8750]};
+const SEED=[
+{id:1,who:'Amina K.',av:'👩',cat:'clean',title:'Ménage & repassage',desc:'Appartement, 3 h minimum. Produits fournis.',price:120,per:'3h',rating:4.9,n:41,dx:.004,dy:.003,ver:1,sup:1,pay:'cash',freq:'weekly'},
+{id:2,who:'Redouane M.',av:'👨‍🏫',cat:'tutor',title:'Maths lycée / bac',desc:'Prof de maths, cours à domicile ou en ligne.',price:100,per:'h',rating:4.8,n:27,dx:-.006,dy:.002,ver:1,sup:1,pay:'mobile',freq:'weekly'},
+{id:3,who:'Omar S.',av:'👨‍🔧',cat:'diy',title:'Plomberie & électricité',desc:'Fuites, prises, lustres, chauffe-eau. Déplacement inclus.',price:150,per:'visite',rating:4.6,n:18,dx:.009,dy:-.004,ver:1,sup:0,pay:'cash',freq:'once'},
+{id:4,who:'Salma B.',av:'👩‍🌾',cat:'garden',title:'Entretien de jardin',desc:'Tonte, taille, arrosage.',price:200,per:'visite',rating:4.7,n:12,dx:-.003,dy:-.008,ver:1,sup:0,pay:'cash',freq:'weekly'},
+{id:5,who:'Youssef A.',av:'🧑',cat:'errand',title:'Courses & colis',desc:'Je récupère tes courses ou colis en scooter.',price:30,per:'course',rating:4.5,n:64,dx:.012,dy:.006,ver:1,sup:1,pay:'mobile',freq:'once'},
+{id:6,who:'Khadija R.',av:'👩‍⚕️',cat:'pet',title:'Garde de chats & chiens',desc:'Promenade et garde à domicile.',price:80,per:'jour',rating:4.9,n:9,dx:-.011,dy:.009,ver:0,sup:0,pay:'cash',freq:'once'},
+{id:7,who:'Hicham T.',av:'👨',cat:'lend',title:'Prêt perceuse & échelle',desc:'Je prête mon matériel, caution symbolique.',price:0,per:'',rating:4.8,n:15,dx:.002,dy:-.012,ver:1,sup:0,pay:'cash',freq:'once'},
+{id:8,who:'Nadia O.',av:'👩‍🏫',cat:'tutor',title:'Français & anglais enfants',desc:'Soutien scolaire primaire/collège.',price:80,per:'h',rating:4.7,n:22,dx:-.014,dy:-.002,ver:1,sup:0,pay:'mobile',freq:'weekly'},
+{id:9,who:'Mehdi L.',av:'🧔',cat:'ride',title:'Trajet aéroport Mohammed V',desc:'Voiture confortable, 3 passagers max.',price:250,per:'trajet',rating:4.6,n:33,dx:.015,dy:.01,ver:1,sup:1,pay:'cash',freq:'once'}];
+
+/* ---------- state ---------- */
+const S=Object.assign({lang:null,hood:'Maarif',radius:5,tab:'home',cat:'all',q:'',mine:[],chats:{},verif:{phone:0,cin:0,photo:0}},JSON.parse(localStorage.getItem('hawma')||'{}'));
+const save=()=>localStorage.setItem('hawma',JSON.stringify(S));
+const t=k=>(I18N[S.lang||"fr"][k]??I18N.fr[k]??k);
+const $=s=>document.querySelector(s);
+const demo=new URLSearchParams(location.search).has('demo');
+if(demo&&!S.lang){S.lang='fr'}
+const center=()=>HOODS[S.hood];
+const all=()=>[...S.mine,...SEED].map(x=>{const[c0,c1]=center();return{...x,lat:x.lat??c0+x.dy,lng:x.lng??c1+x.dx,km:x.mine?0.1:+(Math.hypot(x.dx*111,x.dy*92)).toFixed(1)}});
+const visible=()=>all().filter(x=>x.km<=S.radius&&(S.cat=='all'||x.cat==S.cat)&&(x.title+x.desc+x.who).toLowerCase().includes(S.q.toLowerCase())).sort((a,b)=>a.km-b.km);
+const toast=m=>{const d=document.createElement('div');d.className='toast';d.textContent=m;$('#app').append(d);setTimeout(()=>d.remove(),2200)};
+const cat=c=>CATS.find(x=>x[0]==c);
+const stars=r=>'<span class="stars">★</span> '+r;
+
+/* ---------- views ---------- */
+let map;
+function render(){
+ const A=$('#app');document.documentElement.dir=I18N[S.lang||"fr"].dir;document.documentElement.lang=S.lang=='ar'?'ar':'fr';
+ if(demo)A.classList.add('demo');
+ if(!S.lang){return onboarding(A)}
+ A.innerHTML=`<header><div class="logo"><b>ح</b> Hawma</div>
+ <select id="lg">${['fr','ar','da'].map(l=>`<option value="${l}" ${l==S.lang?'selected':''}>${{fr:'FR',ar:'العربية',da:'Darija'}[l]}</option>`)}</select></header>
+ <main id="m"></main>
+ <nav class="tabs">${[['home','🏠'],['map','🗺️'],['post','➕'],['chat','💬'],['me','👤']].map(([k,i])=>`<button class="${S.tab==k?'on':''}" data-k="${k}"><span>${i}</span>${t(k)}</button>`).join('')}</nav>`;
+ $('#lg').onchange=e=>{S.lang=e.target.value;save();render()};
+ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.k;save();render()});
+ ({home,map:mapView,post,chat:chatList,me})[S.tab]();
+}
+function onboarding(A){
+ A.innerHTML=`<div class="onb"><div style="font-size:42px;color:var(--y);font-weight:800">ح</div><h1>${t('onb_t')}</h1><p>${t('onb_p')}</p>
+ <label>${t('lang')}</label><select id="ol"><option value="fr">Français</option><option value="ar">العربية</option><option value="da">Darija</option></select>
+ <label>${t('hood')}</label><select id="oh">${Object.keys(HOODS).map(h=>`<option>${h}</option>`)}</select>
+ <label>${t('radius')}: <span id="rv">5</span> km</label><input id="or" type="range" min="0.5" max="50" step="0.5" value="5">
+ <label>${t('phone')}</label><input id="op" placeholder="06 12 34 56 78" inputmode="tel">
+ <button class="btn" id="go">${t('go')}</button></div>`;
+ $('#ol').onchange=e=>{S.lang=e.target.value;render();$('#ol').value=S.lang;S.lang=null};
+ $('#or').oninput=e=>$('#rv').textContent=e.target.value;
+ $('#go').onclick=()=>{S.lang=$('#ol').value;S.hood=$('#oh').value;S.radius=+$('#or').value;if($('#op').value)S.verif.phone=1;save();render()};
+}
+function card(x){return `<div class="card" data-id="${x.id}"><div class="av">${x.av||'🙂'}</div><div style="flex:1"><h3>${cat(x.cat)[1]} ${x.title}</h3>
+ <p>${x.who}${x.ver?' <span class="tag">✔ '+t('verified')+'</span>':''}${x.sup?' <span class="tag o">⭐ '+t('super')+'</span>':''}</p>
+ <div class="meta"><span>${stars(x.rating)} (${x.n})</span><span>📍 ${x.km} km</span><span>${x.pay=='cash'?'💵':'📱'}</span>${x.freq=='weekly'?'<span>🔁</span>':''}</div></div>
+ <div class="price">${x.price?x.price+' '+t('mad'):'🤝'}<br><small style="font-weight:400;color:var(--mut)">${x.per}</small></div></div>`}
+function home(){
+ $('#m').innerHTML=`<input class="search" id="q" placeholder="${t('search')}" value="${S.q}">
+ <div class="chips"><button class="chip ${S.cat=='all'?'on':''}" data-c="all">${t('all')}</button>${CATS.map(([c,i])=>`<button class="chip ${S.cat==c?'on':''}" data-c="${c}">${i} ${t('c_'+c)}</button>`).join('')}</div>
+ <p style="font-size:12px;color:var(--mut);margin-bottom:8px">📍 ${S.hood} · ${S.radius} km</p><div id="list">${visible().map(card).join('')||'—'}</div>`;
+ $('#q').oninput=e=>{S.q=e.target.value;$('#list').innerHTML=visible().map(card).join('')||'—';bindCards()};
+ document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{S.cat=c.dataset.c;home()});
+ bindCards();
+}
+const bindCards=()=>document.querySelectorAll('.card').forEach(c=>c.onclick=()=>detail(+c.dataset.id));
+function mapView(){
+ $('#m').innerHTML='<div id="map"></div>';$('#m').style.padding='10px';
+ if(!window.L||!L.map){ $('#m').innerHTML='<p>Map offline</p>';return}
+ map=L.map('map').setView(center(),13);
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+ L.circle(center(),{radius:S.radius*1000,color:'#0F5C4D',fillOpacity:.05}).addTo(map);
+ visible().forEach(x=>{L.marker([x.lat,x.lng],{icon:L.divIcon({html:`<div style="font-size:22px;background:#fff;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;box-shadow:0 2px 6px #0004">${cat(x.cat)[1]}</div>`,className:'',iconSize:[34,34]})}).addTo(map).on('click',()=>detail(x.id))});
+ if(S.radius>3)map.setZoom(Math.max(8,14-Math.log2(S.radius)));
+}
+function detail(id){
+ const x=all().find(a=>a.id==id);const s=document.createElement('div');s.className='sheet';
+ const msg=encodeURIComponent(`Hawma 🏘️ ${x.title} — ${x.who} (${x.price||'gratuit'} MAD)`);
+ s.innerHTML=`<button class="back">${S.lang=='ar'?'→':'←'}</button><div class="row" style="align-items:center;gap:12px"><div class="av" style="flex:none;width:64px;height:64px;font-size:32px">${x.av||'🙂'}</div><div><h2>${x.title}</h2><p>${x.who}</p></div></div>
+ <div class="meta" style="margin:10px 0"><span>${stars(x.rating)} (${x.n} ${t('reviews')})</span><span>📍 ${x.km} km</span>${x.ver?'<span class="tag">✔ '+t('verified')+'</span>':''}${x.sup?'<span class="tag o">⭐ '+t('super')+'</span>':''}</div>
+ <p style="margin:10px 0">${x.desc}</p>
+ <div class="badge"><i>💰</i>${x.price?x.price+' '+t('mad')+' / '+x.per:'🤝'}</div>
+ <div class="badge"><i>${x.pay=='cash'?'💵':'📱'}</i>${x.pay=='cash'?t('cash'):t('mobile')}</div>
+ <div class="badge"><i>🔁</i>${x.freq=='weekly'?t('weekly'):t('once')}</div>
+ <button class="btn" id="bk">${t('book')}</button>
+ <button class="btn wa" id="wa">${t('share')}</button>
+ <button class="btn alt" id="dp">${t('dispute')}</button>`;
+ $('#app').append(s);
+ s.querySelector('.back').onclick=()=>s.remove();
+ s.querySelector('#bk').onclick=()=>{S.chats[id]=S.chats[id]||[];save();s.remove();thread(id)};
+ s.querySelector('#wa').onclick=()=>open('https://wa.me/?text='+msg+'%20'+encodeURIComponent(location.href),'_blank');
+ s.querySelector('#dp').onclick=()=>toast('✔ '+t('dispute'));
+}
+function thread(id){
+ const x=all().find(a=>a.id==id);const s=document.createElement('div');s.className='sheet';
+ const draw=()=>{s.innerHTML=`<button class="back">${S.lang=='ar'?'→':'←'}</button><h3>${x.av} ${x.who}</h3><p style="font-size:13px;color:var(--mut)">${x.title}</p>
+ <div class="chat">${S.chats[id].map(m=>`<div class="bubble ${m.me?'me':''}">${m.t}</div>`).join('')}</div>
+ <button class="btn alt" id="cf" style="margin:8px 0">${t('confirm')}</button>
+ <form class="send"><input id="mi" placeholder="${t('type')}" autocomplete="off"><button class="btn">➤</button></form>`;
+ s.querySelector('.back').onclick=()=>{s.remove();render()};
+ s.querySelector('#cf').onclick=()=>toast(t('confirmed'));
+ s.querySelector('form').onsubmit=e=>{e.preventDefault();const v=$('#mi').value.trim();if(!v)return;S.chats[id].push({me:1,t:v.replace(/</g,'&lt;')});save();draw();
+  setTimeout(()=>{const r=t('reply');S.chats[id].push({t:r[Math.floor(Math.random()*r.length)]});save();if(s.isConnected)draw()},900)};
+ s.querySelector('.chat').scrollTop=1e9};
+ draw();$('#app').append(s);
+}
+function chatList(){
+ const ids=Object.keys(S.chats);
+ $('#m').innerHTML=ids.length?ids.map(i=>{const x=all().find(a=>a.id==i);if(!x)return'';const l=S.chats[i].slice(-1)[0];return `<div class="card" data-chat="${i}"><div class="av">${x.av}</div><div><h3>${x.who}</h3><p>${l?l.t:x.title}</p></div></div>`}).join(''):`<p style="text-align:center;margin-top:60px;color:var(--mut)">💬<br>${t('nochat')}</p>`;
+ document.querySelectorAll('[data-chat]').forEach(c=>c.onclick=()=>thread(c.dataset.chat));
+}
+function post(){
+ $('#m').innerHTML=`<h2>${t('post')}</h2><label>${t('cat')}</label><select id="pc">${CATS.map(([c,i])=>`<option value="${c}">${i} ${t('c_'+c)}</option>`)}</select>
+ <label>${t('title')}</label><input id="pt"><label>${t('desc')}</label><textarea id="pd" rows="3"></textarea>
+ <label>${t('price')}</label><input id="pp" type="number" inputmode="numeric">
+ <label>${t('pay')}</label><select id="py"><option value="cash">${t('cash')}</option><option value="mobile">${t('mobile')}</option></select>
+ <label>${t('freq')}</label><select id="pf"><option value="once">${t('once')}</option><option value="weekly">${t('weekly')}</option></select>
+ <button class="btn alt" disabled style="opacity:.6">${t('voice')}</button>
+ <button class="btn" id="pb">${t('publish')}</button>`;
+ $('#pb').onclick=()=>{const ti=$('#pt').value.trim();if(!ti)return $('#pt').focus();
+  const c=center();S.mine.unshift({id:Date.now(),mine:1,who:'Moi',av:'😀',cat:$('#pc').value,title:ti,desc:$('#pd').value,price:+$('#pp').value||0,per:'',rating:5,n:0,lat:c[0]+(Math.random()-.5)*.004,lng:c[1]+(Math.random()-.5)*.004,ver:S.verif.cin,sup:0,pay:$('#py').value,freq:$('#pf').value});
+  S.tab='home';save();render();toast(t('published'))};
+}
+function me(){
+ const v=S.verif;const row=(k,i,l)=>`<div class="badge"><i>${i}</i>${l}<em class="${v[k]?'ok':''}" ${v[k]?'':`data-v="${k}" style="cursor:pointer;color:var(--c)"`}>${v[k]?'✔ '+t('done'):t('todo')+' ›'}</em></div>`;
+ $('#m').innerHTML=`<div class="row" style="align-items:center;gap:14px;margin-bottom:14px"><div class="av" style="flex:none;width:70px;height:70px;font-size:34px">😀</div><div><h2>${t('bio')}</h2><p style="color:var(--mut)">📍 ${S.hood}</p></div></div>
+ <h3 style="margin:10px 0">${t('ver')}</h3>${row('phone','📞',t('v_phone'))}${row('cin','🪪',t('v_cin'))}${row('photo','📷',t('v_photo'))}
+ <h3 style="margin:16px 0 8px">${t('groups')}</h3>
+ <div class="badge"><i>🏢</i>${t('g1')}<em data-g="1" style="cursor:pointer;color:var(--c)">${t('join')} ›</em></div>
+ <div class="badge"><i>🏘️</i>${t('g2')} · ${S.hood}<em class="ok">✔</em></div>
+ <button class="btn alt" id="rs">${t('reset')}</button>`;
+ document.querySelectorAll('[data-v]').forEach(e=>e.onclick=()=>{S.verif[e.dataset.v]=1;save();me()});
+ document.querySelectorAll('[data-g]').forEach(e=>e.onclick=()=>{e.textContent='✔';e.className='ok';toast('✔')});
+ $('#rs').onclick=()=>{localStorage.removeItem('hawma');location.reload()};
+}
+render();
+if('serviceWorker'in navigator&&!demo)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
