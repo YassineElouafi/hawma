@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/700.css";
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-sans: "Inter Variable", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-display: "Fraunces Variable", "IBM Plex Sans Arabic", Georgia, serif;
+  --color-background: #f7f2e9;
+  --color-foreground: #14231f;
+  --color-card: #fffdf8;
+  --color-muted: #ece5d6;
+  --color-muted-foreground: #5f6e69;
+  --color-border: #e2d9c6;
+  --color-primary: #0b3d33;
+  --color-primary-foreground: #f7f2e9;
+  --color-emerald-950: #072a23;
+  --color-saffron: #f2b84b;
+  --color-terracotta: #d9552b;
+  --color-accent: #f2b84b;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-marquee: marquee 38s linear infinite;
+  @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+  @keyframes marquee { to { transform: translateX(-50%) } }
+}
+
+html { scroll-behavior: smooth; }
+body { @apply bg-background text-foreground font-sans antialiased; }
+[dir="rtl"] .font-display { font-family: "IBM Plex Sans Arabic", serif; font-weight: 700; letter-spacing: 0; }
+.zellige {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23f2b84b' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M40 4l9 21 21-9-9 21 21 9-21 9 9 21-21-9-9 21-9-21-21 9 9-21-21-9 21-9-9-21 21 9z'/%3E%3Ccircle cx='40' cy='40' r='7'/%3E%3C/g%3E%3C/svg%3E");
+}
+.grain::after { content:""; position:absolute; inset:0; pointer-events:none; opacity:.08; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.leaflet-container { font-family: inherit; border-radius: 1.25rem; }

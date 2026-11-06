@@ -2,151 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Hawma — حومة · Ton quartier, ton équipe</title>
-<meta name="description" content="Hawma connecte les voisins au Maroc : ménage, bricolage, cours, courses, transport. En Darija, arabe et français. Paiement cash ou mobile, prestataires vérifiés.">
-<meta name="theme-color" content="#0F5C4D">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22%230F5C4D%22/><text x=%2250%22 y=%2272%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23F4B942%22 font-family=%22serif%22>ح</text></svg>">
-<style>
-:root{--g:#0F5C4D;--g2:#0A4237;--y:#F4B942;--c:#E2552D;--bg:#FBF7F0;--ink:#1B2A27;--mut:#5E6D69}
-*{box-sizing:border-box;margin:0}
-body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
-h1,h2,h3{line-height:1.15;letter-spacing:-.02em}
-a{color:inherit;text-decoration:none}
-.wrap{max-width:1100px;margin:0 auto;padding:0 22px}
-nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
-.logo{font-weight:800;font-size:24px;display:flex;gap:8px;align-items:center}
-.logo b{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--g);color:var(--y);font-size:22px}
-.lang button{border:1px solid #d9d2c3;background:#fff;border-radius:99px;padding:6px 12px;margin-left:4px;cursor:pointer;font:inherit;font-size:13px}
-.lang button.on{background:var(--g);color:#fff;border-color:var(--g)}
-.btn{display:inline-block;background:var(--c);color:#fff;font-weight:700;padding:14px 26px;border-radius:99px;box-shadow:0 8px 24px #e2552d44;transition:.15s}
-.btn:hover{transform:translateY(-2px)}
-.btn.alt{background:#fff;color:var(--g);box-shadow:0 0 0 2px var(--g) inset}
-.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:40px 0 70px}
-.hero h1{font-size:clamp(38px,6vw,64px);color:var(--g2)}
-.hero h1 em{font-style:normal;color:var(--c)}
-.hero p{font-size:19px;color:var(--mut);margin:18px 0 28px;max-width:520px}
-.hero .cta{display:flex;gap:12px;flex-wrap:wrap}
-.phone{justify-self:center;width:290px;border-radius:38px;background:#111;padding:10px;box-shadow:0 30px 70px #0f5c4d44;transform:rotate(3deg)}
-.phone iframe{width:100%;height:560px;border:0;border-radius:30px;background:#fff;display:block}
-.band{background:var(--g);color:#fff;padding:22px 0}
-.band .wrap{display:flex;justify-content:space-around;flex-wrap:wrap;gap:14px;font-weight:600}
-section{padding:70px 0}
-section h2{font-size:clamp(28px,4vw,40px);color:var(--g2);margin-bottom:10px}
-.sub{color:var(--mut);max-width:620px;margin-bottom:34px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
-.card{background:#fff;border-radius:20px;padding:24px;box-shadow:0 2px 0 #eadfc9}
-.card .i{font-size:30px;margin-bottom:8px}
-.card h3{font-size:19px;margin-bottom:6px}
-.card p{color:var(--mut);font-size:15px}
-.steps{counter-reset:s}
-.steps .card::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--y);font-weight:800;margin-bottom:10px}
-.cats{display:flex;flex-wrap:wrap;gap:10px}
-.cats span{background:#fff;border-radius:99px;padding:10px 18px;font-weight:600;box-shadow:0 2px 0 #eadfc9}
-.vs{width:100%;border-collapse:collapse;background:#fff;border-radius:20px;overflow:hidden}
-.vs th,.vs td{padding:14px 16px;text-align:start;border-bottom:1px solid #f0e8d8}
-.vs th{background:var(--g);color:#fff}
-.vs td:nth-child(2){font-weight:700;color:var(--g)}
-.final{background:var(--g2);color:#fff;text-align:center;border-radius:28px;padding:56px 22px;margin-bottom:60px}
-.final h2{color:#fff}
-.final .btn{margin-top:14px}
-form{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-input{padding:14px 18px;border-radius:99px;border:0;min-width:260px;font:inherit}
-footer{padding:30px 0 50px;color:var(--mut);font-size:14px;text-align:center}
-[dir=rtl] .phone{transform:rotate(-3deg)}
-@media(max-width:820px){.hero{grid-template-columns:1fr}.phone{transform:none}}
-</style>
+<meta name="description" content="Hawma connecte les voisins au Maroc : ménage, bricolage, cours, courses, transport. En Darija, arabe et français.">
+<meta name="theme-color" content="#0b3d33">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 </head>
 <body>
-<div class="wrap">
-<nav>
-  <a class="logo" href="#"><b>ح</b>Hawma</a>
-  <div class="lang"><button data-l="fr" class="on">FR</button><button data-l="ar">العربية</button><button data-l="da">Darija</button></div>
-</nav>
-
-<header class="hero">
-  <div>
-    <h1 data-t="h1">Ton quartier, <em>ton équipe.</em></h1>
-    <p data-t="hp">Ménage, bricolage, cours, courses, transport : trouve un voisin de confiance à quelques rues de chez toi, ou gagne un revenu en proposant ton talent.</p>
-    <div class="cta"><a class="btn" href="app/" data-t="try">Essayer l'app</a><a class="btn alt" href="#how" data-t="how">Comment ça marche</a></div>
-  </div>
-  <div class="phone"><iframe src="app/?demo=1" title="Hawma app" loading="lazy"></iframe></div>
-</header>
-</div>
-
-<div class="band"><div class="wrap">
-  <span data-t="b1">🗣️ Darija · العربية · Français</span>
-  <span data-t="b2">💵 Cash ou paiement mobile</span>
-  <span data-t="b3">🛡️ Voisins vérifiés (CIN + OTP)</span>
-  <span data-t="b4">💬 Partage WhatsApp en 1 tap</span>
-</div></div>
-
-<section id="how"><div class="wrap">
-  <h2 data-t="h2a">Prêt en 3 étapes</h2>
-  <p class="sub" data-t="s2a">Pas de compte compliqué : ton numéro de téléphone suffit.</p>
-  <div class="grid steps">
-    <div class="card"><h3 data-t="st1">Choisis ta hawma</h3><p data-t="sp1">Ton quartier et un rayon de 500 m à 50 km. Ta position exacte n'est jamais partagée.</p></div>
-    <div class="card"><h3 data-t="st2">Trouve ou propose</h3><p data-t="sp2">Parcours la carte et la liste, ou publie un service en 1 minute, même avec un message vocal.</p></div>
-    <div class="card"><h3 data-t="st3">Confirme et note</h3><p data-t="sp3">Discute, fixe un rendez-vous, paie en cash ou en mobile, puis laisse un avis lié à un vrai service.</p></div>
-  </div>
-</div></section>
-
-<section style="background:#fff"><div class="wrap">
-  <h2 data-t="h2b">Tout ce dont le quartier a besoin</h2>
-  <p class="sub" data-t="s2b">8 catégories au lancement, d'autres arrivent avec vos demandes.</p>
-  <div class="cats">
-    <span>🔧 Bricolage</span><span>✨ Ménage</span><span>🌿 Jardin</span><span>📚 Cours</span><span>🛒 Courses</span><span>🚗 Transport</span><span>🐾 Animaux</span><span>📦 Prêt d'objets</span>
-  </div>
-</div></section>
-
-<section><div class="wrap">
-  <h2 data-t="h2c">Pensé pour le Maroc</h2>
-  <p class="sub" data-t="s2c">Pas une copie d'une app étrangère : Hawma colle à la façon dont on s'entraide ici.</p>
-  <div class="grid">
-    <div class="card"><div class="i">🗣️</div><h3 data-t="f1">Darija, arabe, français</h3><p data-t="fp1">Interface complète en 3 langues, avec lecture de droite à gauche et notes vocales.</p></div>
-    <div class="card"><div class="i">💵</div><h3 data-t="f2">Cash d'abord</h3><p data-t="fp2">Paie en espèces à la fin du service, ou en mobile (CMI, Orange Money, inwi money). Litige ? Un bouton, une réponse.</p></div>
-    <div class="card"><div class="i">🛡️</div><h3 data-t="f3">Confiance réelle</h3><p data-t="fp3">CIN + OTP + photo pour les prestataires, avis uniquement après un service confirmé, badge SuperVoisin.</p></div>
-    <div class="card"><div class="i">🔁</div><h3 data-t="f4">Services récurrents</h3><p data-t="fp4">Ménage chaque mardi, cours deux fois par semaine : programme une fois, c'est réglé.</p></div>
-    <div class="card"><div class="i">🏢</div><h3 data-t="f5">Groupes d'immeuble</h3><p data-t="fp5">Annonces, prêts et entraide dans ta résidence, avant même d'ouvrir au quartier.</p></div>
-    <div class="card"><div class="i">📶</div><h3 data-t="f6">Léger et hors-ligne</h3><p data-t="fp6">Fonctionne sur connexion lente, s'installe sans store (PWA) et garde tes annonces en mémoire.</p></div>
-  </div>
-</div></section>
-
-<section style="background:#fff"><div class="wrap">
-  <h2 data-t="h2d">Hawma face aux apps de voisinage actuelles</h2>
-  <p class="sub"></p>
-  <table class="vs">
-    <tr><th></th><th>Hawma</th><th data-t="oth">Apps actuelles</th></tr>
-    <tr><td data-t="r1">Langues</td><td>Darija · AR · FR</td><td>FR</td></tr>
-    <tr><td data-t="r2">Paiement</td><td data-t="r2a">Cash + mobile + litiges</td><td data-t="r2b">Non précisé</td></tr>
-    <tr><td data-t="r3">Vérification</td><td>CIN + OTP + photo</td><td data-t="r3b">Badge simple</td></tr>
-    <tr><td data-t="r4">Récurrence</td><td>✔</td><td>✘</td></tr>
-    <tr><td>WhatsApp</td><td>✔</td><td>✘</td></tr>
-  </table>
-</div></section>
-
-<div class="wrap"><div class="final">
-  <h2 data-t="h2e">Sois parmi les premiers voisins</h2>
-  <p data-t="fin">On ouvre quartier par quartier. Laisse ton numéro ou ton e-mail et on te prévient quand Hawma arrive chez toi.</p>
-  <form onsubmit="event.preventDefault();this.innerHTML='<b>✔ Merci !</b>';">
-    <input required placeholder="Email / WhatsApp" aria-label="contact">
-    <button class="btn" data-t="join" style="border:0;cursor:pointer;font:inherit;font-weight:700">Me prévenir</button>
-  </form>
-  <p style="margin-top:22px"><a class="btn alt" href="app/" data-t="try2">Ou essaie la version démo</a></p>
-</div></div>
-<footer>© 2026 Hawma · 🇲🇦 Made in Morocco</footer>
-
-<script>
-const T={
-fr:{},
-ar:{h1:'حومتك، <em>فريقك.</em>',hp:'تنظيف، إصلاحات، دروس، مشاوير، نقل: لقى جار موثوق قريب منك، أو ربح مدخول إضافي بموهبتك.',try:'جرّب التطبيق',how:'كيفاش خدام',b1:'🗣️ الدارجة · العربية · Français',b2:'💵 كاش أو أداء بالهاتف',b3:'🛡️ جيران موثّقين (CIN + OTP)',b4:'💬 شارك فواتساب بنقرة',h2a:'جاهز في 3 خطوات',s2a:'بلا تسجيل معقد: رقم هاتفك يكفي.',st1:'اختار حومتك',sp1:'حيّك ومسافة من 500 متر حتى 50 كلم. موقعك الدقيق ما كيتشاركش.',st2:'لقى أو اقترح',sp2:'تصفح الخريطة واللائحة، أو انشر خدمة في دقيقة ولو برسالة صوتية.',st3:'أكد وقيّم',sp3:'دردش، حدد موعد، أدّي كاش أو بالهاتف، ثم اكتب رأيك بعد خدمة حقيقية.',h2b:'كل ما يحتاجه الحي',s2b:'8 أصناف عند الانطلاق، والباقي حسب طلباتكم.',h2c:'مصمم للمغرب',s2c:'مماشي نسخة من تطبيق أجنبي: حومة كتفهم كيفاش كنتعاونو هنا.',f1:'دارجة، عربية، فرنسية',fp1:'واجهة كاملة بـ3 لغات مع الكتابة من اليمين لليسار ورسائل صوتية.',f2:'الكاش أولا',fp2:'أدّي نقدا بعد الخدمة أو بالهاتف (CMI، أورنج مني، إنوي مني). مشكل؟ زر واحد وجواب.',f3:'ثقة حقيقية',fp3:'CIN + OTP + صورة للمقدمين، تقييم فقط بعد خدمة مؤكدة، وشارة SuperVoisin.',f4:'خدمات متكررة',fp4:'تنظيف كل ثلاثاء، دروس مرتين فالأسبوع: برمج مرة وحدة.',f5:'مجموعات العمارة',fp5:'إعلانات وإعارة وتعاون فالإقامة ديالك قبل ما تفتح للحي.',f6:'خفيف وبلا إنترنت قوي',fp6:'كيخدم بالإنترنت الضعيف، كيتثبت بلا متجر (PWA).',h2d:'حومة مقابل تطبيقات الجوار الحالية',oth:'التطبيقات الحالية',r1:'اللغات',r2:'الأداء',r2a:'كاش + هاتف + نزاعات',r2b:'غير مذكور',r3:'التوثيق',r3b:'شارة بسيطة',r4:'التكرار',h2e:'كن من أوائل الجيران',fin:'كنفتحو حي بحي. خلّي رقمك أو إيميلك ونعلموك فاش توصل حومة لعندك.',join:'عاودني',try2:'أو جرّب النسخة التجريبية'},
-da:{h1:'7awmtek, <em>l-fari9 dyalek.</em>',hp:'Mnazzaf, bricolage, dourous, courses, naql: l9a jar m3awel 3lih qrib mnek, wla rbah flous b l-mawhiba dyalek.',try:'Jerreb l-app',how:'Kifach khdam',b1:'🗣️ Darija · العربية · Français',b2:'💵 Cash wla paiement mobile',b3:'🛡️ Jiran m2akdin (CIN + OTP)',b4:'💬 Partage WhatsApp b click',h2a:'Jahez f 3 khatawat',s2a:'Bla ta compte m3a9ed: numero dyalek kafi.',st1:'Khtar 7awmtek',sp1:'L-7ay dyalek w distance men 500 m l 50 km. Position dyalek ma kat-t-partagach.',st2:'L9a wla qtare7',sp2:'Chouf la carte w la liste, wla nshor service f dqiqa, ba7ta b vocal.',st3:'2akkad w 9iyyem',sp3:'Dardach, 7added rendez-vous, khlles cash wla b telephone, w 7ett avis ba3d service 7a9i9i.',h2b:'Koul ma ykhsso l-7ay',s2b:'8 catégories f l-lancement, w l-bqi 7asab talabatkom.',h2c:'M9ad l-Maghrib',s2c:'Machi copie dyal app ajnabiya: Hawma kat-fham kifach kan-t3awnou hna.',f1:'Darija, 3arabiya, français',fp1:'Interface kamla b 3 lougat m3a droite-gauche w vocaux.',f2:'Cash l-awwal',fp2:'Khlles cash ba3d service wla b mobile (CMI, Orange Money, inwi money). Mochkil? Zorr wa7ed w jawab.',f3:'Tiqa 7a9i9iya',fp3:'CIN + OTP + photo l-prestataires, avis ghir ba3d service m2akkad, badge SuperVoisin.',f4:'Services mkarrin',fp4:'Mnazzaf koul tlata, dourous merratayn f simana: programmi merra w7da.',f5:'Groupes dyal l-3imara',fp5:'Annonces, i3ara w t3awn f résidence dyalek qbel l-7ay.',f6:'5fif w bla internet 9awi',fp6:'Kaykhdem b connexion d3ifa, kayt-installa bla store (PWA).',h2d:'Hawma 9bal les apps l-7aliyin',oth:'Apps l-7aliyin',r1:'Lougat',r2:'Paiement',r2a:'Cash + mobile + litiges',r2b:'Machi mdkour',r3:'Vérification',r3b:'Badge basit',r4:'Récurrence',h2e:'Koun men lawwal jiran',fin:'Kan-7ellou 7ay b 7ay. Khelli numero wla email w n3alemouk fash twsal Hawma 3andek.',join:'3alemni',try2:'Wla jerreb la version démo'}
-};
-const fr={};document.querySelectorAll('[data-t]').forEach(e=>fr[e.dataset.t]=e.innerHTML);T.fr=fr;
-function setL(l){document.documentElement.lang=l=='da'?'fr':l;document.documentElement.dir=l=='ar'?'rtl':'ltr';
- document.querySelectorAll('[data-t]').forEach(e=>{const v=T[l][e.dataset.t]??T.fr[e.dataset.t];e.innerHTML=v});
- document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.l==l))}
-document.querySelectorAll('.lang button').forEach(b=>b.onclick=()=>setL(b.dataset.l));
-</script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

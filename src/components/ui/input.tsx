@@ -1,0 +1,10 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
+const base = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10 placeholder:text-muted-foreground";
+export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(({ className, ...p }, r) => <input ref={r} className={cn(base, className)} {...p} />);
+Input.displayName = "Input";
+export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(({ className, ...p }, r) => <textarea ref={r} className={cn(base, "resize-none", className)} {...p} />);
+Textarea.displayName = "Textarea";
+export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(({ className, ...p }, r) => <select ref={r} className={cn(base, "appearance-none", className)} {...p} />);
+Select.displayName = "Select";
+export const Label = ({ className, ...p }: React.LabelHTMLAttributes<HTMLLabelElement>) => <label className={cn("mb-1.5 mt-4 block text-xs font-semibold uppercase tracking-wide text-muted-foreground", className)} {...p} />;
