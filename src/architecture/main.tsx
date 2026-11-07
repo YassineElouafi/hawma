@@ -28,7 +28,7 @@ marked.use({
 
 let mermaidP: Promise<typeof import("mermaid")["default"]> | null = null;
 const getMermaid = () =>
-  (mermaidP ??= import("mermaid").then((m) => {
+  (mermaidP ??= Promise.all([import("mermaid"), document.fonts.load("14px \"Inter Variable\"").catch(() => null), document.fonts.ready]).then(([m]) => {
     m.default.initialize({
       startOnLoad: false,
       securityLevel: "loose",

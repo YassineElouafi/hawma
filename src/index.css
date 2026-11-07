@@ -60,3 +60,5 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .diagram::after { content: "⤢ click to zoom"; position: absolute; top: .5rem; inset-inline-end: .8rem; font-size: .7rem; color: #5f6e69; }
 .diagram svg { max-width: 100%; height: auto; margin: 0 auto; display: block; }
 .mermaid-error { background: #fdebe4 !important; color: #a33 !important; }
+.diagram svg foreignObject { overflow: visible; }
+.diagram svg .nodeLabel, .diagram svg .edgeLabel { line-height: 1.25; }
