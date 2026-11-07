@@ -1,0 +1,15 @@
+name: Architecture check
+on: workflow_dispatch
+jobs:
+  arch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test -c playwright.shots.config.ts --project=desktop architecture.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: arch-shots, path: screenshots/, retention-days: 3 }
