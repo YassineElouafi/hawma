@@ -1,0 +1,83 @@
+import "reflect-metadata";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { NestFastifyApplication } from "@nestjs/platform-fastify";
+import { createApp } from "../src/main";
+import { OVERRIDES } from "../src/app.module";
+
+let app: NestFastifyApplication;
+beforeAll(async () => { app = await createApp(); await app.init(); await app.getHttpAdapter().getInstance().ready(); });
+afterAll(async () => { await app.close(); });
+
+const post = (url: string, payload?: unknown, token?: string) =>
+  app.inject({ method: "POST", url, payload: payload as object, headers: token ? { authorization: `Bearer ${token}` } : {} });
+
+async function login(phone: string) {
+  expect((await post("/v1/auth/otp/request", { phone })).statusCode).toBe(200);
+  const code = OVERRIDES.otpSender.last.get(phone.replace(/^0/, "+212"))!;
+  const r = await post("/v1/auth/otp/verify", { phone, code });
+  expect(r.statusCode).toBe(200);
+  return r.json() as { userId: string; accessToken: string };
+}
+
+describe("API", () => {
+  it("health", async () => { expect((await app.inject({ url: "/healthz" })).json().status).toBe("ok"); });
+
+  it("OTP: rejects bad numbers, wrong codes, and rate-limits", async () => {
+    expect((await post("/v1/auth/otp/request", { phone: "12345678" })).statusCode).toBe(400);
+    await post("/v1/auth/otp/request", { phone: "0611111111" });
+    expect((await post("/v1/auth/otp/verify", { phone: "0611111111", code: "000000" })).statusCode).toBe(401);
+    expect((await post("/v1/auth/otp/verify", { phone: "0611111111", code: "abc" })).headers["content-type"]).toContain("problem+json");
+    for (let i = 0; i < 2; i++) await post("/v1/auth/otp/request", { phone: "0622222222" });
+    await post("/v1/auth/otp/request", { phone: "0622222222" });
+    expect((await post("/v1/auth/otp/request", { phone: "0622222222" })).statusCode).toBe(429);
+  });
+
+  it("OTP code is single-use", async () => {
+    const phone = "0633333333";
+    await post("/v1/auth/otp/request", { phone });
+    const code = OVERRIDES.otpSender.last.get("+212633333333")!;
+    expect((await post("/v1/auth/otp/verify", { phone, code })).statusCode).toBe(200);
+    expect((await post("/v1/auth/otp/verify", { phone, code })).statusCode).toBe(401);
+  });
+
+  it("requires a token and a participant", async () => {
+    expect((await post("/v1/bookings", { mode: "dispatch", totalCentimes: 5000 })).statusCode).toBe(401);
+    const c = await login("0644444444"), stranger = await login("0655555555");
+    const b = (await post("/v1/bookings", { mode: "dispatch", totalCentimes: 5000 }, c.accessToken)).json();
+    expect((await app.inject({ url: `/v1/bookings/${b.id}`, headers: { authorization: `Bearer ${stranger.accessToken}` } })).statusCode).toBe(403);
+  });
+
+  it("full dispatch booking lifecycle over HTTP", async () => {
+    const customer = await login("0661111111"), provider = await login("0662222222");
+    const created = (await post("/v1/bookings", { mode: "dispatch", totalCentimes: 20000, paymentMethod: "cash" }, customer.accessToken)).json();
+    expect(created).toMatchObject({ state: "Requested", feeCentimes: 3000 });
+
+    // customer cannot accept their own job
+    expect((await post(`/v1/bookings/${created.id}/accept`, undefined, customer.accessToken)).statusCode).toBe(422);
+
+    const t = provider.accessToken;
+    let b = (await post(`/v1/bookings/${created.id}/accept`, undefined, t)).json();
+    expect(b).toMatchObject({ state: "Accepted", providerId: provider.userId });
+    for (const [cmd, state] of [["start-trip", "EnRoute"], ["arrive", "Arrived"], ["start-job", "InProgress"], ["complete", "Completed"]] as const) {
+      b = (await post(`/v1/bookings/${created.id}/${cmd}`, undefined, t)).json();
+      expect(b.state).toBe(state);
+    }
+    expect((await post(`/v1/bookings/${created.id}/confirm`, undefined, t)).statusCode).toBe(422); // provider cannot confirm
+    b = (await post(`/v1/bookings/${created.id}/confirm`, undefined, customer.accessToken)).json();
+    expect(b.state).toBe("Confirmed");
+    expect(b.events.map((e: { type: string }) => e.type)).toEqual(["booking.accepted", "booking.enroute", "booking.arrived", "booking.inprogress", "booking.completed", "booking.confirmed"]);
+  });
+
+  it("second provider cannot claim an already accepted dispatch job", async () => {
+    const customer = await login("0671111111"), p1 = await login("0672222222"), p2 = await login("0673333333");
+    const b = (await post("/v1/bookings", { mode: "dispatch", totalCentimes: 3000 }, customer.accessToken)).json();
+    expect((await post(`/v1/bookings/${b.id}/accept`, undefined, p1.accessToken)).statusCode).toBe(201);
+    expect((await post(`/v1/bookings/${b.id}/accept`, undefined, p2.accessToken)).statusCode).toBe(403);
+  });
+
+  it("validates input", async () => {
+    const c = await login("0681111111");
+    expect((await post("/v1/bookings", { mode: "catalogue", totalCentimes: 100 }, c.accessToken)).statusCode).toBe(422);
+    expect((await post("/v1/bookings", { mode: "nope", totalCentimes: -1 }, c.accessToken)).statusCode).toBe(400);
+  });
+});
