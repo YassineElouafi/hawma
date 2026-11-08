@@ -8,6 +8,9 @@ import { MemoryBus, RedisBus } from "./realtime/bus";
 import { AuthService } from "./modules/auth/auth.service";
 import { BookingsService, bookingAccess } from "./modules/bookings/bookings.service";
 import Redis from "ioredis";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
 
 export async function createApp() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), { logger: ["error", "warn"] });
@@ -27,9 +30,18 @@ export function startRealtime(app: NestFastifyApplication) {
   });
 }
 
+/** Optional first-run admin: set BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD (>=12 chars), start once, then REMOVE the variables. Idempotent. */
+async function bootstrapAdmin() {
+  const { BOOTSTRAP_ADMIN_EMAIL: email, BOOTSTRAP_ADMIN_PASSWORD: pw, DATABASE_URL: url } = process.env;
+  if (!email || !pw || !url || process.env.HAWMA_STORE !== "postgres") return;
+  const sql = postgres(url, { max: 1 });
+  try { const r = await new PgStaffRepo(drizzle(sql)).upsert(email, pw, ["admin"]); console.log(`bootstrap admin ready: ${r.email}`); } finally { await sql.end(); }
+}
+
 if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
   const app = await createApp();
   await app.listen(Number(process.env.PORT ?? 3001), "0.0.0.0");
   startRealtime(app);
+  await bootstrapAdmin();
   console.log(`hawma-api listening on ${process.env.PORT ?? 3001}`);
 }
