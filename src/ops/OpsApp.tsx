@@ -64,8 +64,8 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
     <div className="zellige grid min-h-dvh place-items-center bg-emerald-950 p-5">
       <form onSubmit={go} className="w-full max-w-sm rounded-3xl bg-card p-8 shadow-2xl">
         <div className="mb-6 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-primary font-display text-2xl font-bold text-saffron">ح</span><div><div className="font-display text-xl font-semibold">Hawma Ops</div><div className="text-xs text-muted-foreground">Staff only · activity is audited</div></div></div>
-        <Label>Email</Label><Input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Label>Password</Label><Input type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Label htmlFor="ops-email">Email</Label><Input id="ops-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Label htmlFor="ops-password">Password</Label><Input id="ops-password" type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
         {err && <p role="alert" className="mt-3 rounded-lg bg-terracotta/10 px-3 py-2 text-sm text-terracotta">{err}</p>}
         <Button className="mt-6 w-full" size="lg" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
       </form>
@@ -119,7 +119,7 @@ function KycQueue({ token, staff }: { token: string; staff: Staff }) {
             <div className="flex items-start justify-between"><h2 className="font-display text-xl font-semibold">Tier {sel.tier} verification</h2><button aria-label="Close" onClick={() => setSel(null)}><X size={18} /></button></div>
             <p className="mt-1 font-mono text-xs text-muted-foreground">applicant {sel.userId}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">{sel.documents.map((d) => <Badge key={d}>{d}</Badge>)}</div>
-            <Label>Reason (min 5 characters, shown in the audit log)</Label><Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Label htmlFor="ops-reason">Reason (min 5 characters, shown in the audit log)</Label><Textarea id="ops-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
             <Err m={e2} />
             <div className="mt-5 flex gap-3"><Button className="flex-1" disabled={busy || reason.trim().length < 5} onClick={() => decide("approve")}><BadgeCheck size={16} />Approve</Button><Button className="flex-1" variant="terracotta" disabled={busy || reason.trim().length < 5} onClick={() => decide("reject")}>Reject</Button></div>
           </div>
