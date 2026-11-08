@@ -101,3 +101,26 @@ describe("catalogue over HTTP", () => {
     expect((await app.inject({ method: "DELETE", url: `/v1/offers/${offer.id}`, headers: { authorization: `Bearer ${customer.accessToken}` } })).statusCode).toBe(403);
   });
 });
+
+describe("refresh tokens", () => {
+  it("rotate once; replay and garbage are rejected; pilot debug code is opt-in", async () => {
+    const phone = "0698765432";
+    const req = await post("/v1/auth/otp/request", { phone });
+    expect(req.json().devCode).toBeUndefined();
+    const code = OVERRIDES.otpSender.last.get("+212698765432")!;
+    const first = (await post("/v1/auth/otp/verify", { phone, code })).json();
+    expect(first.refreshToken).toBeTruthy();
+    const second = await post("/v1/auth/refresh", { refreshToken: first.refreshToken });
+    expect(second.statusCode).toBe(200);
+    expect(second.json().userId).toBe(first.userId);
+    expect(second.json().refreshToken).not.toBe(first.refreshToken);
+    expect((await post("/v1/auth/refresh", { refreshToken: first.refreshToken })).statusCode).toBe(401); // replay
+    expect((await post("/v1/auth/refresh", { refreshToken: "x".repeat(30) })).statusCode).toBe(401);
+  });
+  it("devCode is returned only when OTP_DEBUG_RETURN_CODE=true", async () => {
+    process.env.OTP_DEBUG_RETURN_CODE = "true";
+    const r = await post("/v1/auth/otp/request", { phone: "0687654321" });
+    delete process.env.OTP_DEBUG_RETURN_CODE;
+    expect(r.json().devCode).toMatch(/^\d{6}$/);
+  });
+});

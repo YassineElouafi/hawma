@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, HttpException, HttpStatus } from "@nestjs/common";
 import { SignJWT, jwtVerify } from "jose";
-import { createHash, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
+import { MemorySessionRepo, MemoryUserRepo, type SessionRepo, type UserRepo } from "./user.repo";
 
 export interface OtpStore { set(phone: string, hash: string, ttlS: number): Promise<void>; get(phone: string): Promise<{ hash: string; attempts: number } | null>; bump(phone: string): Promise<number>; del(phone: string): Promise<void>; hit(key: string, limit: number, windowS: number): Promise<boolean> }
 export interface OtpSender { send(phone: string, code: string): Promise<void> }
@@ -26,7 +27,7 @@ const hash = (phone: string, code: string) => createHash("sha256").update(`${pho
 @Injectable()
 export class AuthService {
   private key = new TextEncoder().encode(process.env.JWT_SECRET ?? "dev-only-secret-change-me-32-bytes-min!!");
-  constructor(readonly store: OtpStore, readonly sender: OtpSender, private users = new Map<string, string>()) {}
+  constructor(readonly store: OtpStore, readonly sender: OtpSender, readonly users: UserRepo = new MemoryUserRepo(), readonly sessions: SessionRepo = new MemorySessionRepo()) {}
 
   normalise(phone: string): string {
     const p = phone.replace(/[\s.-]/g, "").replace(/^00/, "+").replace(/^0([5-7])/, "+212$1");
@@ -41,7 +42,8 @@ export class AuthService {
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     await this.store.set(phone, hash(phone, code), 300);
     await this.sender.send(phone, code);
-    return { sent: true, expiresInS: 300 };
+    // PILOT ONLY: until a WhatsApp/SMS provider is wired, testers get the code in the response. Must be OFF in real production.
+    return { sent: true, expiresInS: 300, ...(process.env.OTP_DEBUG_RETURN_CODE === "true" ? { devCode: code } : {}) };
   }
 
   async verifyOtp(rawPhone: string, code: string) {
@@ -51,9 +53,23 @@ export class AuthService {
     if ((await this.store.bump(phone)) > 5) { await this.store.del(phone); throw new UnauthorizedException("too many attempts"); }
     if (rec.hash !== hash(phone, code)) throw new UnauthorizedException("wrong code");
     await this.store.del(phone);
-    let userId = this.users.get(phone);
-    if (!userId) { userId = randomUUID(); this.users.set(phone, userId); }
-    return { userId, accessToken: await this.sign(userId), expiresInS: 900 };
+    const user = await this.users.upsertByPhone(phone);
+    return this.issue(user.id);
+  }
+
+  private async issue(userId: string) {
+    const refreshToken = randomBytes(32).toString("base64url");
+    await this.sessions.create(userId, refreshToken, 30);
+    return { userId, accessToken: await this.sign(userId), refreshToken, expiresInS: 900 };
+  }
+
+  /** Rotating refresh: each token works once; replaying an old one fails. */
+  async refresh(refreshToken: string) {
+    const userId = await this.sessions.consume(refreshToken);
+    if (!userId) throw new UnauthorizedException("invalid refresh token");
+    const u = await this.users.byId(userId);
+    if (!u || u.status !== "active") throw new UnauthorizedException("account unavailable");
+    return this.issue(userId);
   }
 
   sign(sub: string) { return new SignJWT({}).setProtectedHeader({ alg: "HS256" }).setSubject(sub).setIssuedAt().setExpirationTime("15m").setIssuer("hawma").sign(this.key); }

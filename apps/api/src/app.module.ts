@@ -5,6 +5,8 @@ import { PgBookingRepo } from "./modules/bookings/pg-booking.repo";
 import { PgCatalogueRepo } from "./modules/catalogue/pg-catalogue.repo";
 import { PgAuditRepo, PgKycRepo } from "./modules/ops/pg-ops.repos";
 import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
+import { PgSessionRepo, PgUserRepo } from "./modules/auth/user.repo";
+import { seedDemo } from "./db/seed-demo";
 import { OpsController } from "./modules/ops/ops.controller";
 import { OpsService, MemoryAuditRepo, MemoryKycRepo } from "./modules/ops/ops.service";
 import { StaffService, MemoryStaffRepo } from "./modules/ops/staff.service";
@@ -30,8 +32,8 @@ OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRe
     { provide: "CATALOGUE_REPO", useFactory: () => OVERRIDES.catalogueRepo },
     CatalogueService,
     { provide: StaffService, useFactory: () => new StaffService(OVERRIDES.staffRepo) },
-    { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo) },
-    { provide: AuthService, useFactory: () => new AuthService(process.env.REDIS_URL ? new RedisOtpStore(new Redis(process.env.REDIS_URL)) : new MemoryOtpStore(), OVERRIDES.otpSender) },
+    { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo, db ? () => seedDemo(db) : undefined) },
+    { provide: AuthService, useFactory: () => new AuthService(process.env.REDIS_URL ? new RedisOtpStore(new Redis(process.env.REDIS_URL)) : new MemoryOtpStore(), OVERRIDES.otpSender, db ? new PgUserRepo(db) : undefined, db ? new PgSessionRepo(db) : undefined) },
     { provide: BookingsService, useFactory: () => new BookingsService(db ? new PgBookingRepo(db) : new MemoryBookingRepo()) },
   ],
 })

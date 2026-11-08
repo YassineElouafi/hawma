@@ -23,5 +23,10 @@ export class OpsController {
   @Post("kyc/:id/reject") @HttpCode(200) async reject(@Headers("authorization") h: string, @Param("id") id: string, @Body() b: unknown) {
     const s = await this.me(h); this.staff.require(s, "kyc.review"); return this.ops.kycDecision(s, id, "rejected", decisionSchema.parse(b ?? {}).reason);
   }
+  @Post("seed-demo") @HttpCode(200) async seed(@Headers("authorization") h: string) {
+    const s = await this.me(h); this.staff.require(s, "staff.manage");
+    if (!this.ops.seeder) return { created: 0, note: "seeding requires the Postgres store" };
+    const r = await this.ops.seeder(); await this.ops.auditNote(s, "demo.seed", "catalogue", "seed demo marketplace data", r); return r;
+  }
   @Get("audit") async audit(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ops.auditLog(); }
 }

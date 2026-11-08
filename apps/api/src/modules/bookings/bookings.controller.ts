@@ -17,6 +17,7 @@ export class BookingsController {
   private async uid(h?: string) { if (!h?.startsWith("Bearer ")) throw new UnauthorizedException(); return this.auth.verify(h.slice(7)); }
 
   @Post() async create(@Headers("authorization") h: string, @Body() b: unknown) { return this.svc.create(await this.uid(h), createSchema.parse(b)); }
+  @Get() async list(@Headers("authorization") h: string) { return this.svc.list(await this.uid(h)); }
   @Get(":id") async get(@Headers("authorization") h: string, @Param("id") id: string) { return this.svc.get(id, await this.uid(h)); }
   @Post(":id/:command") async cmd(@Headers("authorization") h: string, @Param("id") id: string, @Param("command") c: string) {
     const command = z.enum(COMMANDS).parse(c.replace(/-/g, "_")) as Command;

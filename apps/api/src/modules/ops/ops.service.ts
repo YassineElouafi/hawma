@@ -30,7 +30,8 @@ export class MemoryKycRepo implements KycRepo {
 
 @Injectable()
 export class OpsService {
-  constructor(private audit: AuditRepo, private kyc: KycRepo) {}
+  constructor(private audit: AuditRepo, private kyc: KycRepo, readonly seeder?: () => Promise<{ created: number; total: number }>) {}
+  auditNote(staff: Staff, action: string, target: string, reason: string, meta: Record<string, unknown>) { return this.audit.append({ actorId: staff.id, action, target, reason, meta }); }
 
   /** Every privileged action goes through here: reason enforced, audit written BEFORE the effect is reported. */
   private async record(staff: Staff, perm: Permission, action: string, target: string, reason: string | undefined, meta: Record<string, unknown> = {}) {

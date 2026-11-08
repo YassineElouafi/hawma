@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 import { ConflictException } from "@nestjs/common";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as s from "../../db/schema";
@@ -26,6 +26,11 @@ export class PgBookingRepo implements BookingRepo {
       totalCentimes: b.totalCentimes, feeCentimes: b.feeCentimes, paymentMethod: b.paymentMethod, version: b.version,
       lat: 0, lng: 0,
     });
+  }
+
+  async listFor(userId: string, limit: number) {
+    const rows = await this.db.select().from(s.bookings).where(or(eq(s.bookings.customerId, userId), eq(s.bookings.providerId, userId))).orderBy(desc(s.bookings.createdAt)).limit(limit);
+    return rows.map((r) => this.toRecord(r, []));
   }
 
   async get(id: string) {
