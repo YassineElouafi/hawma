@@ -1,0 +1,1 @@
+ALTER TABLE "booking"."booking" ADD COLUMN "duration_min" integer DEFAULT 60 NOT NULL;

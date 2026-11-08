@@ -77,7 +77,7 @@ export const bookings = booking.table("booking", {
   id: id(), customerId: uuid("customer_id").notNull(), providerId: uuid("provider_id"), offerId: uuid("offer_id"),
   mode: text("mode").notNull().default("catalogue"), state: text("state").notNull().default("Requested"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }), lat: doublePrecision("lat").notNull(), lng: doublePrecision("lng").notNull(),
-  addressNote: text("address_note"), totalCentimes: integer("total_centimes").notNull().default(0),
+  addressNote: text("address_note"), durationMin: integer("duration_min").notNull().default(60), totalCentimes: integer("total_centimes").notNull().default(0),
   feeCentimes: integer("fee_centimes").notNull().default(0), paymentMethod: text("payment_method").notNull().default("cash"),
   recurringId: uuid("recurring_id"), version: integer("version").notNull().default(0), // optimistic lock
   createdAt: createdAt(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -81,3 +81,23 @@ describe("API", () => {
     expect((await post("/v1/bookings", { mode: "nope", totalCentimes: -1 }, c.accessToken)).statusCode).toBe(400);
   });
 });
+
+describe("catalogue over HTTP", () => {
+  it("provider publishes, customer searches and reads slots", async () => {
+    const provider = await login("0691111111"), customer = await login("0692222222");
+    OVERRIDES.catalogueRepo.stats.set(provider.userId, { rating: 4.8, jobs: 25, tier: 1, cancelRate: 0, responseMin: 5, status: "active" });
+    const body = { categoryId: "tutoring", title: "Maths lycée", lat: 33.5883, lng: -7.635, basePriceCentimes: 10000, pricingModel: "hourly" };
+    expect((await post("/v1/offers", body)).statusCode).toBe(401);
+    expect((await post("/v1/offers", { ...body, categoryId: "cleaning" }, provider.accessToken)).statusCode).toBe(403); // needs tier 2
+    const offer = (await post("/v1/offers", body, provider.accessToken)).json();
+    expect(offer.id).toBeTruthy();
+    expect((await app.inject({ method: "PUT", url: "/v1/me/availability", payload: { rules: [{ weekday: 2, startMin: 540, endMin: 660 }] }, headers: { authorization: `Bearer ${provider.accessToken}` } })).statusCode).toBe(204);
+    const res = await app.inject({ url: "/v1/search?lat=33.59&lng=-7.63&radiusM=4000&q=maths", headers: { authorization: `Bearer ${customer.accessToken}` } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().map((x: { id: string }) => x.id)).toContain(offer.id);
+    const slots = await app.inject({ url: `/v1/offers/${offer.id}/slots?from=2026-11-10&days=1&durationMin=60` });
+    expect(slots.json().map((x: { startMin: number }) => x.startMin)).toEqual([540, 570, 600]);
+    expect((await app.inject({ url: "/v1/search?lat=abc&lng=-7.63" })).statusCode).toBe(400);
+    expect((await app.inject({ method: "DELETE", url: `/v1/offers/${offer.id}`, headers: { authorization: `Bearer ${customer.accessToken}` } })).statusCode).toBe(403);
+  });
+});

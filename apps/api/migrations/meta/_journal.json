@@ -15,6 +15,20 @@
       "when": 1794071577826,
       "tag": "0001_ledger_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794137775646,
+      "tag": "0002_booking_duration",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794137817326,
+      "tag": "0003_seed_categories",
+      "breakpoints": true
     }
   ]
 }
