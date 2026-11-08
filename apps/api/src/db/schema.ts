@@ -128,3 +128,8 @@ export const auditLog = platform.table("audit_log", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(), actorId: uuid("actor_id"), action: text("action").notNull(),
   target: text("target"), reason: text("reason"), meta: jsonb("meta").notNull().default({}), createdAt: createdAt(),
 });
+
+export const staffUsers = platform.table("staff_user", {
+  id: id(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
+  roles: jsonb("roles").notNull().default([]), active: boolean("active").notNull().default(true), createdAt: createdAt(),
+}, (t) => [uniqueIndex("staff_email_uq").on(t.email)]);

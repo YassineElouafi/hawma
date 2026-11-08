@@ -36,6 +36,13 @@
       "when": 1794138062392,
       "tag": "0004_booking_local_time",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794147916489,
+      "tag": "0005_staff_user",
+      "breakpoints": true
     }
   ]
 }

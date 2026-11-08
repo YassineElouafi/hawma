@@ -37,3 +37,17 @@ jobs:
       - run: npm run typecheck
       - run: npx tsx src/db/migrate.ts
       - run: npm test
+      - name: Production-mode smoke (Postgres stores, staff bootstrap, ops login)
+        env: { HAWMA_STORE: postgres, PORT: "3999", STAFF_PASSWORD: "smoke-test-password-123" }
+        run: |
+          npx tsx src/db/staff-create.ts smoke@hawma.ma admin
+          npx tsx src/main.ts > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:3999/healthz && break; sleep 1; done
+          curl -sf localhost:3999/healthz
+          TOKEN=$(curl -sf -X POST localhost:3999/ops/login -H 'content-type: application/json' -d '{"email":"smoke@hawma.ma","password":"smoke-test-password-123"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+          curl -sf localhost:3999/ops/me -H "authorization: Bearer $TOKEN" | grep -q smoke@hawma.ma
+          curl -sf "localhost:3999/v1/search?lat=33.58&lng=-7.63" | grep -q '\['
+          cat api.log
+      - name: Build API image
+        working-directory: apps/api
+        run: docker build -t hawma-api .

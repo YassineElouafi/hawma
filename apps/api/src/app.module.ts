@@ -1,4 +1,10 @@
 import { Module } from "@nestjs/common";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { PgBookingRepo } from "./modules/bookings/pg-booking.repo";
+import { PgCatalogueRepo } from "./modules/catalogue/pg-catalogue.repo";
+import { PgAuditRepo, PgKycRepo } from "./modules/ops/pg-ops.repos";
+import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
 import { OpsController } from "./modules/ops/ops.controller";
 import { OpsService, MemoryAuditRepo, MemoryKycRepo } from "./modules/ops/ops.service";
 import { StaffService, MemoryStaffRepo } from "./modules/ops/staff.service";
@@ -13,8 +19,10 @@ import { AuthService, ConsoleOtpSender, MemoryOtpStore } from "./modules/auth/au
 import { BookingsController } from "./modules/bookings/bookings.controller";
 import { BookingsService, MemoryBookingRepo } from "./modules/bookings/bookings.service";
 
-export const OVERRIDES = { otpSender: new ConsoleOtpSender(), catalogueRepo: new MemoryCatalogueRepo(), staffRepo: new MemoryStaffRepo(), kycRepo: undefined as unknown as MemoryKycRepo, auditRepo: new MemoryAuditRepo() };
-OVERRIDES.kycRepo = new MemoryKycRepo(OVERRIDES.auditRepo);
+const db = process.env.HAWMA_STORE === "postgres" && process.env.DATABASE_URL ? drizzle(postgres(process.env.DATABASE_URL, { max: Number(process.env.DB_POOL ?? 10) })) : undefined;
+
+export const OVERRIDES = { otpSender: new ConsoleOtpSender(), catalogueRepo: db ? new PgCatalogueRepo(db) : new MemoryCatalogueRepo(), staffRepo: db ? new PgStaffRepo(db) : new MemoryStaffRepo(), auditRepo: db ? new PgAuditRepo(db) : new MemoryAuditRepo(), kycRepo: undefined as unknown as import("./modules/ops/ops.service").KycRepo };
+OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRepo as MemoryAuditRepo);
 
 @Module({
   controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController],
@@ -24,7 +32,7 @@ OVERRIDES.kycRepo = new MemoryKycRepo(OVERRIDES.auditRepo);
     { provide: StaffService, useFactory: () => new StaffService(OVERRIDES.staffRepo) },
     { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo) },
     { provide: AuthService, useFactory: () => new AuthService(process.env.REDIS_URL ? new RedisOtpStore(new Redis(process.env.REDIS_URL)) : new MemoryOtpStore(), OVERRIDES.otpSender) },
-    { provide: BookingsService, useFactory: () => new BookingsService(new MemoryBookingRepo()) },
+    { provide: BookingsService, useFactory: () => new BookingsService(db ? new PgBookingRepo(db) : new MemoryBookingRepo()) },
   ],
 })
 export class AppModule {}
