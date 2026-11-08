@@ -24,7 +24,7 @@ export class MemoryBookingRepo implements BookingRepo {
 @Injectable()
 export class BookingsService {
   readonly published: BookingEvent[] = []; // stand-in for the transactional outbox
-  constructor(private repo: BookingRepo) {}
+  constructor(readonly repo: BookingRepo) {}
 
   async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"] }) {
     if (input.mode === "catalogue" && !input.providerId) throw new UnprocessableEntityException("catalogue bookings need a providerId");
@@ -69,4 +69,13 @@ export class BookingsService {
     const actor = this.actorFor(b, userId, false);
     return { ...b, allowed: allowedCommands(b, actor) };
   }
+}
+
+/** Realtime authorisation helpers (used by the gateway). */
+export async function bookingAccess(repo: BookingRepo, bookingId: string, userId: string) {
+  const b = await repo.get(bookingId);
+  if (!b) return { participant: false, canShareLocation: false };
+  const participant = b.customerId === userId || b.providerId === userId;
+  const canShareLocation = b.providerId === userId && ["Accepted", "EnRoute", "Arrived", "InProgress"].includes(b.state);
+  return { participant, canShareLocation };
 }
