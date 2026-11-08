@@ -62,3 +62,42 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .mermaid-error { background: #fdebe4 !important; color: #a33 !important; }
 .diagram svg foreignObject { overflow: visible; }
 .diagram svg .nodeLabel, .diagram svg .edgeLabel { line-height: 1.25; }
+
+/* ---------- Arc-style neutral system for dashboards (ops console) ---------- */
+:root {
+  --ops-bg: oklch(98.4% 0.002 90);
+  --ops-sidebar: oklch(97% 0.003 90);
+  --ops-card: oklch(100% 0 0);
+  --ops-border: oklch(93% 0.004 90);
+  --ops-fg: oklch(21% 0.01 170);
+  --ops-muted: oklch(52% 0.01 170);
+  --ops-hover: oklch(96% 0.004 90);
+  --ops-accent: oklch(42% 0.075 170);
+  --ops-accent-fg: oklch(98% 0 0);
+  --ops-ring: oklch(42% 0.075 170 / .25);
+  --ops-green: oklch(62% 0.15 155); --ops-red: oklch(60% 0.19 27); --ops-amber: oklch(76% 0.15 75); --ops-blue: oklch(60% 0.17 255); --ops-violet: oklch(58% 0.2 295);
+}
+.dark {
+  --ops-bg: oklch(19% 0.004 170);
+  --ops-sidebar: oklch(21.5% 0.005 170);
+  --ops-card: oklch(23% 0.005 170);
+  --ops-border: oklch(31% 0.006 170);
+  --ops-fg: oklch(96% 0.004 90);
+  --ops-muted: oklch(70% 0.008 170);
+  --ops-hover: oklch(27% 0.006 170);
+  --ops-accent: oklch(78% 0.13 170);
+  --ops-accent-fg: oklch(20% 0.02 170);
+  --ops-ring: oklch(78% 0.13 170 / .3);
+}
+@theme inline {
+  --color-ops-bg: var(--ops-bg); --color-ops-sidebar: var(--ops-sidebar); --color-ops-card: var(--ops-card); --color-ops-border: var(--ops-border);
+  --color-ops-fg: var(--ops-fg); --color-ops-muted: var(--ops-muted); --color-ops-hover: var(--ops-hover); --color-ops-accent: var(--ops-accent); --color-ops-accent-fg: var(--ops-accent-fg);
+  --color-ops-green: var(--ops-green); --color-ops-red: var(--ops-red); --color-ops-amber: var(--ops-amber); --color-ops-blue: var(--ops-blue); --color-ops-violet: var(--ops-violet);
+}
+.ops-root { background: var(--ops-bg); color: var(--ops-fg); font-size: 13.5px; font-family: var(--font-sans); letter-spacing: -0.003em; }
+.ops-root ::selection { background: var(--ops-ring); }
+.ops-scroll { scrollbar-width: thin; scrollbar-color: var(--ops-border) transparent; }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.skeleton { position: relative; overflow: hidden; background: var(--ops-hover); border-radius: 8px; }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ops-fg) 6%, transparent), transparent); animation: shimmer 1.4s infinite; }
+@media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }

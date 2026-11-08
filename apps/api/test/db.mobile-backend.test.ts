@@ -48,3 +48,19 @@ const url = process.env.DATABASE_URL;
     expect((await svc.list(randomUUID())).length).toBe(0);
   });
 });
+
+(url ? describe : describe.skip)("booking stats on real Postgres", () => {
+  it("aggregates by state and returns a gap-free 14-day series", async () => {
+    const c = postgres(url!, { max: 2 }); const svc = new BookingsService(new PgBookingRepo(drizzle(c)));
+    const cust = randomUUID(), prov = randomUUID();
+    const b = await svc.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 5000, paymentMethod: "cash" });
+    await svc.command(b.id, "accept", prov);
+    const s = await svc.stats(14);
+    expect(s.perDay).toHaveLength(14);
+    expect(new Set(s.perDay.map((d) => d.date)).size).toBe(14);
+    expect(s.byState.Accepted).toBeGreaterThanOrEqual(1);
+    expect(s.total).toBe(Object.values(s.byState).reduce((a, n) => a + n, 0));
+    expect(s.perDay[13].count).toBeGreaterThanOrEqual(2);
+    await c.end();
+  });
+});

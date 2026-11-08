@@ -29,6 +29,13 @@ export class OpsController {
     if (!this.ops.seeder) return { created: 0, note: "seeding requires the Postgres store" };
     const r = await this.ops.seeder(); await this.ops.auditNote(s, "demo.seed", "catalogue", "seed demo marketplace data", r); return r;
   }
+  @Get("stats") async stats(@Headers("authorization") h: string) {
+    const s = await this.me(h); this.staff.require(s, "bookings.read");
+    const [b, q] = await Promise.all([this.bookings.stats(14), this.ops.kycQueue(200)]);
+    const sum = (ks: string[]) => ks.reduce((n, k) => n + (b.byState[k] ?? 0), 0);
+    const active = sum(["Accepted", "EnRoute", "Arrived", "InProgress"]), done = sum(["Settled", "Confirmed", "Completed"]), lost = sum(["Cancelled", "Declined", "Expired"]);
+    return { ...b, active, pendingKyc: q.length, fillRate: done + lost ? done / (done + lost) : null };
+  }
   @Get("bookings") async listBookings(@Headers("authorization") h: string, @Query("state") state?: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.listAll(state || undefined, 100); }
   @Get("bookings/:id") async oneBooking(@Headers("authorization") h: string, @Param("id") id: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.getAny(id); }
   @Get("audit") async audit(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ops.auditLog(); }

@@ -122,3 +122,13 @@ describe("verification applications and bookings explorer", () => {
     expect((await req("GET", "/ops/bookings", c.accessToken)).statusCode).toBe(401); // customer token cannot use ops
   });
 });
+
+describe("ops stats", () => {
+  it("summarises bookings for the dashboard", async () => {
+    await mk("stats@hawma.ma", ["read_only"]); const t = await login("stats@hawma.ma");
+    const r = await req("GET", "/ops/stats", t); expect(r.statusCode).toBe(200);
+    const s = r.json();
+    expect(s.perDay).toHaveLength(14); expect(typeof s.total).toBe("number"); expect(s).toHaveProperty("pendingKyc"); expect(s).toHaveProperty("fillRate");
+    expect((await req("GET", "/ops/stats")).statusCode).toBe(401);
+  });
+});

@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { ConflictException } from "@nestjs/common";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as s from "../../db/schema";
@@ -26,6 +26,19 @@ export class PgBookingRepo implements BookingRepo {
       totalCentimes: b.totalCentimes, feeCentimes: b.feeCentimes, paymentMethod: b.paymentMethod, version: b.version,
       lat: 0, lng: 0,
     });
+  }
+
+  async stats(days: number) {
+    const rows = await this.db.execute<{ state: string; n: number; gmv: string; fee: string }>(sql`select state, count(*)::int n, coalesce(sum(total_centimes),0)::bigint gmv, coalesce(sum(fee_centimes),0)::bigint fee from booking.booking group by state`);
+    const byState: Record<string, number> = {}; let total = 0, gmv = 0, fees = 0;
+    for (const r of rows) { byState[r.state] = Number(r.n); total += Number(r.n); if (["Confirmed", "Settled", "Completed"].includes(r.state)) { gmv += Number(r.gmv); fees += Number(r.fee); } }
+    const dayRows = await this.db.execute<{ d: string; n: number; gmv: string }>(sql`
+      select to_char(g.d, 'YYYY-MM-DD') d, count(b.id)::int n,
+             coalesce(sum(b.total_centimes) filter (where b.state in ('Confirmed','Settled','Completed')), 0)::bigint gmv
+      from generate_series(current_date - (${days - 1}::int), current_date, interval '1 day') g(d)
+      left join booking.booking b on b.created_at::date = g.d::date
+      group by g.d order by g.d`);
+    return { total, byState, gmvCentimes: gmv, feesCentimes: fees, perDay: [...dayRows].map((r) => ({ date: r.d, count: Number(r.n), gmvCentimes: Number(r.gmv) })) };
   }
 
   async listAll(state: string | undefined, limit: number) {
