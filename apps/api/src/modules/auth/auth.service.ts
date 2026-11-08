@@ -37,7 +37,7 @@ export class AuthService {
 
   async requestOtp(rawPhone: string, ip = "unknown") {
     const phone = this.normalise(rawPhone);
-    if (!(await this.store.hit(`otp:phone:${phone}`, 3, 600)) || !(await this.store.hit(`otp:ip:${ip}`, 20, 600)))
+    if (!(await this.store.hit(`otp:phone:${phone}`, 3, 600)) || !(await this.store.hit(`otp:ip:${ip}`, Number(process.env.OTP_IP_LIMIT ?? 20), 600)))
       throw new HttpException("too many requests", HttpStatus.TOO_MANY_REQUESTS);
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     await this.store.set(phone, hash(phone, code), 300);

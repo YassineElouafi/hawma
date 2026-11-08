@@ -17,7 +17,8 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: apps/mobile/package-lock.json }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses (SDK is preinstalled on ubuntu runners)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - run: npm ci
       - run: npx tsc --noEmit
       - name: Generate native Android project
