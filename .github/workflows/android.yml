@@ -1,0 +1,49 @@
+name: Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**", ".github/workflows/android.yml"]
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults: { run: { working-directory: apps/mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+        env: { CI: "1" }
+      - name: Set version code from run number
+        run: sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+      - uses: actions/cache@v4
+        with:
+          path: ~/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/mobile/package-lock.json') }}
+      - name: Build release APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon -x lint
+      - name: Collect APK
+        run: |
+          mkdir -p ../../out
+          cp android/app/build/outputs/apk/release/app-release.apk ../../out/hawma-${{ github.run_number }}.apk
+          ls -la ../../out
+      - uses: actions/upload-artifact@v4
+        with: { name: hawma-apk, path: out/*.apk, retention-days: 30 }
+      - name: Publish GitHub release
+        working-directory: .
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          gh release create "apk-${{ github.run_number }}" out/hawma-${{ github.run_number }}.apk \
+            --title "Hawma Android build ${{ github.run_number }}" \
+            --notes "Pilot build from commit ${{ github.sha }}. Sideload on Android (allow installs from this source). Signed with the Expo default debug key; Play Store needs a dedicated keystore." \
+            --prerelease

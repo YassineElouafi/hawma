@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Hawma",
+    "slug": "hawma",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "hawma",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": { "image": "./assets/icon.png", "resizeMode": "contain", "backgroundColor": "#0b3d33" },
+    "android": {
+      "package": "ma.hawma.app",
+      "versionCode": 1,
+      "adaptiveIcon": { "foregroundImage": "./assets/icon.png", "backgroundColor": "#0b3d33" },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      "expo-secure-store",
+      ["expo-location", { "locationWhenInUsePermission": "Hawma uses your location to show services near you." }],
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
+    ]
+  }
+}

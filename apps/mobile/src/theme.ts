@@ -1,0 +1,1 @@
+export const C = { emerald: "#0b3d33", emerald2: "#072a23", saffron: "#f2b84b", terracotta: "#d9552b", sand: "#f7f2e9", card: "#fffdf8", border: "#e2d9c6", ink: "#14231f", mute: "#5f6e69", white: "#ffffff" };
