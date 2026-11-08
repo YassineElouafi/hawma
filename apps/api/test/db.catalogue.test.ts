@@ -41,10 +41,10 @@ d("Postgres catalogue (real Postgres)", () => {
     const p = await provider(2), customer = randomUUID();
     const o = await svc.publish(p, { categoryId: "tutoring", title: "Maths", lat: maarif.lat, lng: maarif.lng, radiusM: 5000, basePriceCentimes: 10000, pricingModel: "hourly", recurringAllowed: false });
     await svc.setAvailability(p, [{ weekday: 2, startMin: 540, endMin: 720 }]); // Tuesdays 09:00-12:00 local
-    // booking Tue 2026-11-10 10:00 local (Casablanca is UTC+1 in Nov 2026) = 09:00Z, 60 min
-    await client`insert into booking.booking (customer_id, provider_id, lat, lng, scheduled_at, duration_min, state) values (${customer}, ${p}, 33.5, -7.6, '2026-11-10T09:00:00Z', 60, 'Accepted')`;
+    // booking Tue 2026-11-10 10:00 local (local fields computed by the app, see domain/time.ts) = 09:00Z, 60 min
+    await client`insert into booking.booking (customer_id, provider_id, lat, lng, scheduled_at, duration_min, local_date, start_min, state) values (${customer}, ${p}, 33.5, -7.6, '2026-11-10T09:00:00Z', 60, '2026-11-10', 600, 'Accepted')`;
     // cancelled booking at 09:00 local must NOT block
-    await client`insert into booking.booking (customer_id, provider_id, lat, lng, scheduled_at, duration_min, state) values (${customer}, ${p}, 33.5, -7.6, '2026-11-10T08:00:00Z', 60, 'Cancelled')`;
+    await client`insert into booking.booking (customer_id, provider_id, lat, lng, scheduled_at, duration_min, local_date, start_min, state) values (${customer}, ${p}, 33.5, -7.6, '2026-11-10T08:00:00Z', 60, '2026-11-10', 540, 'Cancelled')`;
     const slots = await svc.slots(o.id, "2026-11-10", 1, 60);
     expect(slots.map((x) => x.startMin)).toEqual([540, 660]); // 09:00 ok (cancelled ignored), 10:00 busy, 09:30/10:30 overlap, 11:00 ok
   });

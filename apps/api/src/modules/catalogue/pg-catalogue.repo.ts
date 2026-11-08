@@ -45,15 +45,12 @@ export class PgCatalogueRepo implements CatalogueRepo {
   }
   async busy(providerId: string, fromDate: string, days: number): Promise<Busy[]> {
     const rows = await this.db.execute<{ d: string; s: number; e: number }>(sql`
-      select to_char(local_at, 'YYYY-MM-DD') as d,
-             (extract(hour from local_at) * 60 + extract(minute from local_at))::int as s,
-             (extract(hour from local_at) * 60 + extract(minute from local_at))::int + duration_min as e
-      from (select scheduled_at at time zone 'Africa/Casablanca' as local_at, duration_min
-            from booking.booking
-            where provider_id = ${providerId} and scheduled_at is not null
-              and state not in ('Declined','Expired','Cancelled','Refunded')
-              and scheduled_at >= (${fromDate}::date - interval '1 day')
-              and scheduled_at <  (${fromDate}::date + (${days} || ' days')::interval + interval '1 day')) x`);
+      select local_date as d, start_min as s, start_min + duration_min as e
+      from booking.booking
+      where provider_id = ${providerId} and local_date is not null and start_min is not null
+        and state not in ('Declined','Expired','Cancelled','Refunded')
+        and local_date >= to_char(${fromDate}::date, 'YYYY-MM-DD')
+        and local_date <  to_char(${fromDate}::date + ${days}::int, 'YYYY-MM-DD')`);
     return [...rows].map((r) => ({ date: r.d, startMin: r.s, endMin: r.e }));
   }
   async categoryTier(id: string) { const [r] = await this.db.select({ t: s.categories.requiredTier }).from(s.categories).where(eq(s.categories.id, id)); return r?.t; }
