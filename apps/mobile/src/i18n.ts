@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  hello: "Bonjour 👋", findHelp: "De quoi as-tu besoin ?", categories: "Catégories", active: "En cours", past: "Terminées", rating: "Note", jobs: "Missions", distance: "Distance", priceFrom: "À partir de", payment: "Paiement", whatNext: "Prochaine étape", whatNextText: "Le prestataire reçoit ta demande et répond en quelques minutes.", seeAll: "Voir tout", noActive: "Aucune réservation en cours", noActiveHint: "Trouve un service près de chez toi et réserve en 30 secondes.", noPast: "Rien dans l'historique", total: "Total", saved: "Enregistré",
   tag: "Ton quartier, ton équipe.", phone: "Numéro de téléphone", phoneHint: "06 12 34 56 78", sendCode: "Recevoir le code", code: "Code à 6 chiffres", verify: "Valider",
   codeSentDev: "Code de test (pilote) :", wrongCode: "Code incorrect ou expiré", badPhone: "Numéro marocain invalide", network: "Connexion impossible. Réessaie.",
   home: "Accueil", bookings: "Réservations", profile: "Profil", search: "Rechercher un service…", all: "Tout", near: "Près de chez toi", empty: "Aucun service trouvé. Élargis la recherche.",
@@ -12,6 +13,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  hello: "مرحبا 👋", findHelp: "ماذا تحتاج؟", categories: "الأصناف", active: "جارية", past: "منتهية", rating: "التقييم", jobs: "المهام", distance: "المسافة", priceFrom: "ابتداء من", payment: "الدفع", whatNext: "الخطوة التالية", whatNextText: "يستلم المقدّم طلبك ويرد خلال دقائق.", seeAll: "عرض الكل", noActive: "لا حجوزات جارية", noActiveHint: "ابحث عن خدمة قريبة واحجز في 30 ثانية.", noPast: "لا شيء في السجل", total: "المجموع", saved: "تم الحفظ",
   tag: "حيّك، فريقك.", phone: "رقم الهاتف", phoneHint: "06 12 34 56 78", sendCode: "أرسل الرمز", code: "رمز من 6 أرقام", verify: "تأكيد",
   codeSentDev: "رمز تجريبي (النسخة التجريبية):", wrongCode: "الرمز خاطئ أو منتهي", badPhone: "رقم مغربي غير صالح", network: "تعذّر الاتصال. أعد المحاولة.",
   home: "الرئيسية", bookings: "الحجوزات", profile: "حسابي", search: "ابحث عن خدمة…", all: "الكل", near: "قريب منك", empty: "لا خدمات. وسّع البحث.",
@@ -22,7 +24,8 @@ const ar: Dict = {
   cancel: "إلغاء", confirm: "أكّد الخدمة", live: "تتبع مباشر", liveOn: "وصل موقع المقدّم", back: "رجوع",
 };
 const da: Dict = {
-  ...ar, tag: "حومتك، فريقك.", sendCode: "صيفط ليا الكود", code: "كود من 6 أرقام", verify: "تأكيد", codeSentDev: "كود تجريبي:", wrongCode: "الكود غالط ولا سالا", badPhone: "نمرة مغربية ماشي صحيحة",
+  ...ar,
+  hello: "السلام 👋", findHelp: "شنو محتاج؟", categories: "الأصناف", active: "جارية", past: "سالات", rating: "التقييم", jobs: "الخدمات", distance: "المسافة", priceFrom: "من", payment: "الأداء", whatNext: "المرحلة الجاية", whatNextText: "المقدّم كيتوصل بطلبك وكيجاوب فدقايق.", seeAll: "شوف الكل", noActive: "ما كاين حتى حجز جاري", noActiveHint: "قلّب على خدمة قريبة واحجز فـ30 ثانية.", noPast: "ما كاين والو فالسجل", total: "المجموع", saved: "تحفظات", tag: "حومتك، فريقك.", sendCode: "صيفط ليا الكود", code: "كود من 6 أرقام", verify: "تأكيد", codeSentDev: "كود تجريبي:", wrongCode: "الكود غالط ولا سالا", badPhone: "نمرة مغربية ماشي صحيحة",
   network: "ما قدرناش نتصلو. عاود.", search: "قلّب على خدمة…", all: "كلشي", near: "قريب منك", c_diy: "بريكولاج", c_cleaning: "نقاء", c_garden: "جردة", c_errands: "كورسات", c_lending: "تسليف",
   book: "احجز", booked: "تصيفطات الطلب ✔", noBookings: "ما كاين حتى حجز.", logout: "خروج", cash: "خلّص كاش فالأخير", s_Requested: "كيتسنّى", s_Accepted: "مقبولة", s_EnRoute: "فالطريق", s_Completed: "سالات",
 };
