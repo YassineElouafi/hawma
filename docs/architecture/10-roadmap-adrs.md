@@ -26,6 +26,7 @@ flowchart LR
 | ADR-8 | One mobile app with two modes | Separate provider app | Neighbours are both sides; one install | UX divergence or store policy |
 | ADR-9 | REST + OpenAPI + WS | GraphQL | Simpler caching, generated clients, less ops | Many bespoke client query shapes |
 | ADR-10 | Phone OTP via WhatsApp-first | SMS only | Cheaper/deliverable in MA, higher conversion | Provider cost/ban risk changes |
+| ADR-11 | Morocco time is an explicit rule table (UTC+1; UTC+0 in Ramadan), not tzdata | `Africa/Casablanca` from tzdata/ICU/Postgres | Found 2026-11-08: Postgres 16 and Node 22 in CI both resolved the zone as UTC+0 in November while a local Node said UTC+1. Booking times are financial/legal, so local date and minute are computed in the app and stored on the booking | Government publishes yearly Ramadan dates: update `domain/time.ts` each year |
 
 ## 10.3 Risk register
 
