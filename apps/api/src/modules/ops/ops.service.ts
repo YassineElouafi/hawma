@@ -12,6 +12,8 @@ export class MemoryAuditRepo implements AuditRepo {
 
 export interface Verification { id: string; userId: string; tier: number; status: "submitted" | "auto_passed" | "in_review" | "approved" | "rejected"; reason?: string; documents: string[]; createdAt: string }
 export interface KycRepo {
+  submit(userId: string, tier: number, documents: string[]): Promise<Verification>;
+  forUser(userId: string): Promise<Verification[]>;
   list(status: Verification["status"][], limit: number): Promise<Verification[]>;
   get(id: string): Promise<Verification | undefined>;
   /** Atomic: status change + provider tier + AUDIT ROW in one transaction, so a decision can never exist without its audit entry. */
@@ -20,6 +22,8 @@ export interface KycRepo {
 export class MemoryKycRepo implements KycRepo {
   items = new Map<string, Verification>(); tiers = new Map<string, number>();
   constructor(private auditRepo?: AuditRepo) {}
+  async submit(userId: string, tier: number, documents: string[]) { const v: Verification = { id: crypto.randomUUID(), userId, tier, status: "in_review", documents, createdAt: new Date().toISOString() }; this.items.set(v.id, v); return v; }
+  async forUser(userId: string) { return [...this.items.values()].filter((v) => v.userId === userId); }
   async list(status: Verification["status"][], limit: number) { return [...this.items.values()].filter((v) => status.includes(v.status)).slice(0, limit); }
   async get(id: string) { return this.items.get(id); }
   async decide(id: string, status: "approved" | "rejected", _r: string, reason: string | undefined, expected: Verification["status"][], audit: Omit<AuditEntry, "id" | "at">) {
@@ -38,6 +42,15 @@ export class OpsService {
     if (REASON_REQUIRED.includes(perm) && (!reason || reason.trim().length < 5)) throw new BadRequestException("a reason of at least 5 characters is required");
     await this.audit.append({ actorId: staff.id, action, target, reason: reason?.trim(), meta });
   }
+
+  /** Provider applies for a verification tier. One open application per user. */
+  async submitVerification(userId: string, tier: number, documents: string[]) {
+    if (![1, 2, 3].includes(tier)) throw new UnprocessableEntityException("tier must be 1, 2 or 3");
+    const open = (await this.kyc.forUser(userId)).find((v) => v.status === "in_review" || v.status === "submitted");
+    if (open) throw new ConflictException("you already have a verification in review");
+    return this.kyc.submit(userId, tier, documents);
+  }
+  myVerifications(userId: string) { return this.kyc.forUser(userId); }
 
   async kycQueue(limit = 50) { return this.kyc.list(["in_review", "submitted"], limit); }
 

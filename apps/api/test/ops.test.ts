@@ -96,3 +96,29 @@ describe("ops API", () => {
     expect((await req("GET", "/ops/me", t)).statusCode).toBe(401);
   });
 });
+
+describe("verification applications and bookings explorer", () => {
+  it("provider applies once; staff sees it in the queue and approves; explorer lists bookings", async () => {
+    await req("POST", "/v1/auth/otp/request", undefined, { phone: "0644556677" });
+    const code = OVERRIDES.otpSender.last.get("+212644556677")!;
+    const c = (await req("POST", "/v1/auth/otp/verify", undefined, { phone: "0644556677", code })).json();
+    expect((await req("POST", "/v1/verifications", undefined, { tier: 1, documents: ["cin_front"] })).statusCode).toBe(401);
+    expect((await req("POST", "/v1/verifications", c.accessToken, { tier: 9, documents: ["cin_front"] })).statusCode).toBe(400);
+    expect((await req("POST", "/v1/verifications", c.accessToken, { tier: 1, documents: ["cin_front", "cin_back", "selfie"] })).statusCode).toBe(201);
+    expect((await req("POST", "/v1/verifications", c.accessToken, { tier: 1, documents: ["selfie"] })).statusCode).toBe(409); // one open application
+    expect((await req("GET", "/v1/verifications/mine", c.accessToken)).json()[0].status).toBe("in_review");
+    await mk("rev2@hawma.ma", ["trust_safety"]); const t = await login("rev2@hawma.ma");
+    const q = (await req("GET", "/ops/kyc", t)).json();
+    const mine = q.find((v: { userId: string }) => v.userId === c.userId);
+    expect(mine).toBeTruthy();
+    expect((await req("POST", `/ops/kyc/${mine.id}/approve`, t, { reason: "documents match the applicant" })).statusCode).toBe(200);
+    expect((await req("GET", "/v1/verifications/mine", c.accessToken)).json()[0].status).toBe("approved");
+
+    const b = (await req("POST", "/v1/bookings", c.accessToken, { mode: "dispatch", totalCentimes: 2500 })).json();
+    const list = (await req("GET", "/ops/bookings", t)).json();
+    expect(list.map((x: { id: string }) => x.id)).toContain(b.id);
+    expect((await req("GET", `/ops/bookings?state=Settled`, t)).json().map((x: { id: string }) => x.id)).not.toContain(b.id);
+    expect((await req("GET", `/ops/bookings/${b.id}`, t)).json().state).toBe("Requested");
+    expect((await req("GET", "/ops/bookings", c.accessToken)).statusCode).toBe(401); // customer token cannot use ops
+  });
+});

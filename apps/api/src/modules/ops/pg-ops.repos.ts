@@ -16,6 +16,8 @@ export class PgAuditRepo implements AuditRepo {
 
 export class PgKycRepo implements KycRepo {
   constructor(private db: PostgresJsDatabase) {}
+  async submit(userId: string, tier: number, documents: string[]) { const [r] = await this.db.insert(s.verifications).values({ userId, tier, status: "in_review", documents }).returning(); return toV(r); }
+  async forUser(userId: string) { return (await this.db.select().from(s.verifications).where(eq(s.verifications.userId, userId)).orderBy(desc(s.verifications.createdAt))).map(toV); }
   async list(status: Verification["status"][], limit: number) {
     return (await this.db.select().from(s.verifications).where(inArray(s.verifications.status, status)).orderBy(s.verifications.createdAt).limit(limit)).map(toV);
   }

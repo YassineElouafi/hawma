@@ -9,7 +9,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test -c playwright.shots.config.ts --project=desktop architecture.spec.ts
+      - run: npx playwright test -c playwright.shots.config.ts --project=desktop architecture.spec.ts ops.spec.ts
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: arch-shots, path: screenshots/, retention-days: 3 }

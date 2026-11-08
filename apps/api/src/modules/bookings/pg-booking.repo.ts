@@ -28,6 +28,11 @@ export class PgBookingRepo implements BookingRepo {
     });
   }
 
+  async listAll(state: string | undefined, limit: number) {
+    const rows = await this.db.select().from(s.bookings).where(state ? eq(s.bookings.state, state) : undefined).orderBy(desc(s.bookings.createdAt)).limit(limit);
+    return rows.map((r) => this.toRecord(r, []));
+  }
+
   async listFor(userId: string, limit: number) {
     const rows = await this.db.select().from(s.bookings).where(or(eq(s.bookings.customerId, userId), eq(s.bookings.providerId, userId))).orderBy(desc(s.bookings.createdAt)).limit(limit);
     return rows.map((r) => this.toRecord(r, []));

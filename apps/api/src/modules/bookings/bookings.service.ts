@@ -7,12 +7,13 @@ export interface BookingRecord {
   id: string; customerId: string; providerId: string | null; mode: Mode; state: BookingState; totalCentimes: number; feeCentimes: number;
   paymentMethod: "cash" | "card" | "wallet"; version: number; events: BookingEvent[];
 }
-export interface BookingRepo { listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
+export interface BookingRepo { listAll(state: string | undefined, limit: number): Promise<BookingRecord[]>; listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
 
 /** Test/dev repo. Production uses Drizzle with optimistic locking on booking.version + outbox write in the same tx. */
 export class MemoryBookingRepo implements BookingRepo {
   private m = new Map<string, BookingRecord>();
   async get(id: string) { const b = this.m.get(id); return b && structuredClone(b); }
+  async listAll(state: string | undefined, limit: number) { return [...this.m.values()].filter((b) => !state || b.state === state).slice(-limit).reverse().map((b) => structuredClone(b)); }
   async listFor(userId: string, limit: number) { return [...this.m.values()].filter((b) => b.customerId === userId || b.providerId === userId).slice(-limit).reverse().map((b) => structuredClone(b)); }
   async insert(b: BookingRecord) { this.m.set(b.id, structuredClone(b)); }
   async save(b: BookingRecord, expected: number) {
@@ -64,6 +65,8 @@ export class BookingsService {
     }
   }
 
+  async listAll(state: string | undefined, limit = 100) { return this.repo.listAll(state, limit); }
+  async getAny(id: string) { const b = await this.repo.get(id); if (!b) throw new NotFoundException(); return b; }
   async list(userId: string, limit = 50) { return this.repo.listFor(userId, limit); }
 
   async get(id: string, userId: string) {

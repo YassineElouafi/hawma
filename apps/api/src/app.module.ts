@@ -8,6 +8,7 @@ import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
 import { PgSessionRepo, PgUserRepo } from "./modules/auth/user.repo";
 import { seedDemo } from "./db/seed-demo";
 import { OpsController } from "./modules/ops/ops.controller";
+import { VerificationController } from "./modules/ops/verification.controller";
 import { OpsService, MemoryAuditRepo, MemoryKycRepo } from "./modules/ops/ops.service";
 import { StaffService, MemoryStaffRepo } from "./modules/ops/staff.service";
 import { CatalogueController } from "./modules/catalogue/catalogue.controller";
@@ -27,7 +28,7 @@ export const OVERRIDES = { otpSender: new ConsoleOtpSender(), catalogueRepo: db 
 OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRepo as MemoryAuditRepo);
 
 @Module({
-  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController],
+  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController],
   providers: [
     { provide: "CATALOGUE_REPO", useFactory: () => OVERRIDES.catalogueRepo },
     CatalogueService,

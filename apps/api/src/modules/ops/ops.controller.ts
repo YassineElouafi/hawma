@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, Query, UnauthorizedException, HttpCode } from "@nestjs/common";
 import { z } from "zod";
 import { OpsService } from "./ops.service";
+import { BookingsService } from "../bookings/bookings.service";
 import { StaffService, type Staff } from "./staff.service";
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(8).max(200) });
@@ -8,7 +9,7 @@ const decisionSchema = z.object({ reason: z.string().max(500).optional() });
 
 @Controller("ops")
 export class OpsController {
-  constructor(@Inject(StaffService) private staff: StaffService, @Inject(OpsService) private ops: OpsService) {}
+  constructor(@Inject(StaffService) private staff: StaffService, @Inject(OpsService) private ops: OpsService, @Inject(BookingsService) private bookings: BookingsService) {}
   private async me(h?: string): Promise<Staff> { if (!h?.startsWith("Bearer ")) throw new UnauthorizedException(); return this.staff.authenticate(h.slice(7)); }
 
   @Post("login") @HttpCode(200) login(@Body() b: unknown) { const v = loginSchema.parse(b); return this.staff.login(v.email, v.password); }
@@ -28,5 +29,7 @@ export class OpsController {
     if (!this.ops.seeder) return { created: 0, note: "seeding requires the Postgres store" };
     const r = await this.ops.seeder(); await this.ops.auditNote(s, "demo.seed", "catalogue", "seed demo marketplace data", r); return r;
   }
+  @Get("bookings") async listBookings(@Headers("authorization") h: string, @Query("state") state?: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.listAll(state || undefined, 100); }
+  @Get("bookings/:id") async oneBooking(@Headers("authorization") h: string, @Param("id") id: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.getAny(id); }
   @Get("audit") async audit(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ops.auditLog(); }
 }
