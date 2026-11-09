@@ -141,3 +141,14 @@ describe("provider mode API", () => {
     expect((await post(`/v1/bookings/${b.id}/cancel`, undefined, customer.accessToken)).json().state).toBe("Cancelled"); // customer can still cancel
   });
 });
+
+describe("empty JSON bodies", () => {
+  it("command endpoints accept content-type json with no body; malformed JSON is a clean 400", async () => {
+    const c = await login("0613572468"), p = await login("0624681357");
+    const b = (await post("/v1/bookings", { mode: "catalogue", providerId: p.userId, totalCentimes: 1000 }, c.accessToken)).json();
+    const r = await app.inject({ method: "POST", url: `/v1/bookings/${b.id}/accept`, headers: { authorization: `Bearer ${p.accessToken}`, "content-type": "application/json" } });
+    expect(r.statusCode).toBe(201); expect(r.json().state).toBe("Accepted");
+    const bad = await app.inject({ method: "POST", url: "/v1/auth/otp/request", headers: { "content-type": "application/json" }, payload: "{not json" });
+    expect(bad.statusCode).toBe(400);
+  });
+});

@@ -14,7 +14,7 @@ type Stats = { total: number; byState: Record<string, number>; gmvCentimes: numb
 type Page = "overview" | "kyc" | "bookings" | "audit";
 
 async function call<T>(token: string, path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(API + path, { ...init, headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...init?.headers } });
+  const r = await fetch(API + path, { ...init, headers: { ...(init?.body ? { "content-type": "application/json" } : {}), authorization: `Bearer ${token}`, ...init?.headers } });
   const t = await r.text(); const b = t ? JSON.parse(t) : undefined;
   if (!r.ok) throw new Error(b?.title ?? r.statusText);
   return b;

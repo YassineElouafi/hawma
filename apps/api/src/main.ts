@@ -13,8 +13,15 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
 
 export async function createApp() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), { logger: ["error", "warn"] });
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), { logger: ["error", "warn"], bodyParser: false });
   app.useGlobalFilters(new ZodFilter());
+  // Clients commonly send "content-type: application/json" with an empty body on command endpoints (accept, cancel…).
+  // Fastify rejects that by default (400), so treat an empty body as "no body".
+  const fastify = app.getHttpAdapter().getInstance();
+  fastify.addContentTypeParser("application/json", { parseAs: "string" }, (_req: unknown, body: string, done: (e: Error | null, v?: unknown) => void) => {
+    if (!body) return done(null, undefined);
+    try { done(null, JSON.parse(body)); } catch (e) { (e as Error & { statusCode?: number }).statusCode = 400; done(e as Error); }
+  });
   return app;
 }
 

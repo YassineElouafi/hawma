@@ -14,7 +14,7 @@ export const currentUserId = () => tokens?.userId;
 export const accessToken = () => tokens?.accessToken;
 
 async function raw(path: string, init: RequestInit & { auth?: boolean } = {}) {
-  const headers: Record<string, string> = { "content-type": "application/json", ...(init.headers as Record<string, string>) };
+  const headers: Record<string, string> = { ...(init.body ? { "content-type": "application/json" } : {}), ...(init.headers as Record<string, string>) };
   if (init.auth && tokens) headers.authorization = `Bearer ${tokens.accessToken}`;
   const res = await fetch(API_URL + path, { ...init, headers });
   const text = await res.text();
