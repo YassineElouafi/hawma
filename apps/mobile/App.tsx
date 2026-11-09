@@ -208,7 +208,7 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
 
 /* ---------- bookings ---------- */
 function Bookings({ insetTop }: { insetTop: number }) {
-  const { t } = useT(); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, string>>({}); const [seg, setSeg] = useState<"active" | "past">("active");
+  const { t } = useT(); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, string>>({}); const [seg, setSeg] = useState<"active" | "past">("active");
   const load = useCallback(async () => { setBusy(true); try { setItems(await api("/v1/bookings")); } catch { setItems([]); } finally { setBusy(false); } }, []);
   useEffect(() => { load(); }, [load]);
   const ws = useRef<WebSocket | null>(null);
