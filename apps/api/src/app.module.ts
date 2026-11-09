@@ -1,4 +1,8 @@
 import { Module } from "@nestjs/common";
+import { DocumentsController } from "./modules/documents/documents.controller";
+import { DocumentsService, MemoryDocRepo } from "./modules/documents/documents.service";
+import { PgDocRepo } from "./modules/documents/pg-documents.repo";
+import { DocCrypto } from "./modules/documents/crypto";
 import { ReviewsController } from "./modules/reviews/reviews.controller";
 import { MemoryReviewRepo, ReviewsService } from "./modules/reviews/reviews.service";
 import { PgReviewRepo, PgStatsSink } from "./modules/reviews/pg-reviews.repo";
@@ -38,8 +42,11 @@ export const OVERRIDES = {
 OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRepo as MemoryAuditRepo);
 
 @Module({
-  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController],
+  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController],
   providers: [
+    { provide: "DOC_CRYPTO", useFactory: () => new DocCrypto(process.env.KYC_ENC_KEY) },
+    { provide: "DOC_REPO", useFactory: () => (db ? new PgDocRepo(db) : new MemoryDocRepo((id) => { const v = (OVERRIDES.kycRepo as unknown as { items?: Map<string, { userId: string; status: string }> }).items?.get(id); return v && { userId: v.userId, status: v.status }; })) },
+    DocumentsService,
     { provide: "REVIEW_REPO", useFactory: () => (db ? new PgReviewRepo(db) : OVERRIDES.reviewRepo) },
     { provide: "BOOKING_REPO", useFactory: (b: BookingsService) => b.repo, inject: [BookingsService] },
     { provide: "STATS_SINK", useFactory: () => (db ? new PgStatsSink(db) : OVERRIDES.statsSink) },

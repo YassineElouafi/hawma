@@ -1,4 +1,4 @@
-import { bigint, boolean, doublePrecision, index, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, customType, doublePrecision, index, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 /** One Postgres schema per module (docs §6.1). Only identity.user is referenced across schemas. */
 export const identity = pgSchema("identity");
@@ -133,3 +133,9 @@ export const staffUsers = platform.table("staff_user", {
   id: id(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
   roles: jsonb("roles").notNull().default([]), active: boolean("active").notNull().default(true), createdAt: createdAt(),
 }, (t) => [uniqueIndex("staff_email_uq").on(t.email)]);
+
+export const kycDocuments = identity.table("kyc_document", {
+  id: id(), verificationId: uuid("verification_id").notNull().references(() => verifications.id), userId: uuid("user_id").notNull(),
+  kind: text("kind").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
+  nonce: text("nonce").notNull(), ciphertext: customType<{ data: Buffer }>({ dataType: () => "bytea" })("ciphertext").notNull(), createdAt: createdAt(),
+}, (t) => [index("kycdoc_verification_idx").on(t.verificationId)]);
