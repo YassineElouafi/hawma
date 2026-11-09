@@ -1,6 +1,9 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  modeProvider: "Passer en mode prestataire", modeCustomer: "Revenir en mode client", today: "Aujourd'hui", offers: "Mes offres", online: "En ligne", offline: "Hors ligne", onlineHint: "Les clients voient que tu es disponible", requests: "Demandes", noRequests: "Aucune nouvelle demande", activeJob: "Mission en cours", accept: "Accepter", decline: "Refuser", startTrip: "Je pars", arrive: "Je suis arrivé", startJob: "Commencer", complete: "Terminer", sharing: "Position partagée avec le client",
+  becomeProvider: "Deviens prestataire", becomeProviderHint: "Propose tes services près de chez toi. Notre équipe vérifie ton identité avant l'activation.", applyVerify: "Demander la vérification", vStatus: "Vérification", v_in_review: "En cours d'examen", v_submitted: "Envoyée", v_approved: "Approuvée ✔", v_rejected: "Refusée",
+  newOffer: "Nouvelle offre", publish: "Publier", offerTitle: "Titre du service", priceMad: "Prix (MAD)", noOffers: "Aucune offre publiée", noOffersHint: "Publie ta première offre pour recevoir des demandes.", offerPublished: "Offre publiée ✔", needVerified: "Ta vérification doit être approuvée pour publier.", confirmDone: "Confirmer", cancelBooking: "Annuler",
   hello: "Bonjour 👋", findHelp: "De quoi as-tu besoin ?", categories: "Catégories", active: "En cours", past: "Terminées", rating: "Note", jobs: "Missions", distance: "Distance", priceFrom: "À partir de", payment: "Paiement", whatNext: "Prochaine étape", whatNextText: "Le prestataire reçoit ta demande et répond en quelques minutes.", seeAll: "Voir tout", noActive: "Aucune réservation en cours", noActiveHint: "Trouve un service près de chez toi et réserve en 30 secondes.", noPast: "Rien dans l'historique", total: "Total", saved: "Enregistré",
   tag: "Ton quartier, ton équipe.", phone: "Numéro de téléphone", phoneHint: "06 12 34 56 78", sendCode: "Recevoir le code", code: "Code à 6 chiffres", verify: "Valider",
   codeSentDev: "Code de test (pilote) :", wrongCode: "Code incorrect ou expiré", badPhone: "Numéro marocain invalide", network: "Connexion impossible. Réessaie.",
@@ -13,6 +16,9 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  modeProvider: "التحويل إلى وضع المقدّم", modeCustomer: "العودة لوضع الزبون", today: "اليوم", offers: "عروضي", online: "متصل", offline: "غير متصل", onlineHint: "يرى الزبائن أنك متاح", requests: "الطلبات", noRequests: "لا طلبات جديدة", activeJob: "مهمة جارية", accept: "قبول", decline: "رفض", startTrip: "انطلقت", arrive: "وصلت", startJob: "ابدأ", complete: "أنهيت", sharing: "يتم مشاركة موقعك مع الزبون",
+  becomeProvider: "كن مقدّم خدمة", becomeProviderHint: "اعرض خدماتك قرب منزلك. يتحقق فريقنا من هويتك قبل التفعيل.", applyVerify: "اطلب التوثيق", vStatus: "التوثيق", v_in_review: "قيد المراجعة", v_submitted: "تم الإرسال", v_approved: "تمت الموافقة ✔", v_rejected: "مرفوض",
+  newOffer: "عرض جديد", publish: "نشر", offerTitle: "عنوان الخدمة", priceMad: "السعر (درهم)", noOffers: "لا عروض منشورة", noOffersHint: "انشر أول عرض لتستقبل الطلبات.", offerPublished: "تم نشر العرض ✔", needVerified: "يجب الموافقة على توثيقك قبل النشر.", confirmDone: "تأكيد", cancelBooking: "إلغاء",
   hello: "مرحبا 👋", findHelp: "ماذا تحتاج؟", categories: "الأصناف", active: "جارية", past: "منتهية", rating: "التقييم", jobs: "المهام", distance: "المسافة", priceFrom: "ابتداء من", payment: "الدفع", whatNext: "الخطوة التالية", whatNextText: "يستلم المقدّم طلبك ويرد خلال دقائق.", seeAll: "عرض الكل", noActive: "لا حجوزات جارية", noActiveHint: "ابحث عن خدمة قريبة واحجز في 30 ثانية.", noPast: "لا شيء في السجل", total: "المجموع", saved: "تم الحفظ",
   tag: "حيّك، فريقك.", phone: "رقم الهاتف", phoneHint: "06 12 34 56 78", sendCode: "أرسل الرمز", code: "رمز من 6 أرقام", verify: "تأكيد",
   codeSentDev: "رمز تجريبي (النسخة التجريبية):", wrongCode: "الرمز خاطئ أو منتهي", badPhone: "رقم مغربي غير صالح", network: "تعذّر الاتصال. أعد المحاولة.",
@@ -25,6 +31,9 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  modeProvider: "ولّي مقدّم", modeCustomer: "رجع كليان", online: "كونيكتي", offline: "ماكونيكتيش", onlineHint: "الكليان كيشوفو بلي موجود", noRequests: "ما كاين حتى طلب جديد", activeJob: "خدمة جارية", decline: "رفض", startTrip: "مشيت", arrive: "وصلت", complete: "سالات", sharing: "الموقع ديالك كيتشارى مع الكليان",
+  becomeProvider: "ولّي مقدّم خدمة", becomeProviderHint: "اعرض الخدمات ديالك قرب منك. الفريق كيتأكد من الهوية قبل التفعيل.", applyVerify: "طلب التوثيق", v_in_review: "كيتراجع", v_approved: "تقبل ✔", v_rejected: "مرفوض",
+  newOffer: "عرض جديد", publish: "نشر", noOffers: "ما كاين حتى عرض", noOffersHint: "نشر أول عرض باش توصلك الطلبات.", offerPublished: "تنشر العرض ✔", needVerified: "خاص التوثيق ديالك يتقبل قبل النشر.", cancelBooking: "إلغاء",
   hello: "السلام 👋", findHelp: "شنو محتاج؟", categories: "الأصناف", active: "جارية", past: "سالات", rating: "التقييم", jobs: "الخدمات", distance: "المسافة", priceFrom: "من", payment: "الأداء", whatNext: "المرحلة الجاية", whatNextText: "المقدّم كيتوصل بطلبك وكيجاوب فدقايق.", seeAll: "شوف الكل", noActive: "ما كاين حتى حجز جاري", noActiveHint: "قلّب على خدمة قريبة واحجز فـ30 ثانية.", noPast: "ما كاين والو فالسجل", total: "المجموع", saved: "تحفظات", tag: "حومتك، فريقك.", sendCode: "صيفط ليا الكود", code: "كود من 6 أرقام", verify: "تأكيد", codeSentDev: "كود تجريبي:", wrongCode: "الكود غالط ولا سالا", badPhone: "نمرة مغربية ماشي صحيحة",
   network: "ما قدرناش نتصلو. عاود.", search: "قلّب على خدمة…", all: "كلشي", near: "قريب منك", c_diy: "بريكولاج", c_cleaning: "نقاء", c_garden: "جردة", c_errands: "كورسات", c_lending: "تسليف",
   book: "احجز", booked: "تصيفطات الطلب ✔", noBookings: "ما كاين حتى حجز.", logout: "خروج", cash: "خلّص كاش فالأخير", s_Requested: "كيتسنّى", s_Accepted: "مقبولة", s_EnRoute: "فالطريق", s_Completed: "سالات",

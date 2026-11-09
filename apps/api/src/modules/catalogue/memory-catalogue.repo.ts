@@ -17,5 +17,7 @@ export class MemoryCatalogueRepo implements CatalogueRepo {
   async setRules(p: string, r: Rule[]) { this.ruleMap.set(p, r); }
   async busy(p: string) { return this.busyMap.get(p) ?? []; }
   async categoryTier(c: string) { return this.tiers[c]; }
+  async offersOf(p: string) { return [...this.offers.values()].filter((o) => o.providerId === p); }
+  async providerProfile(p: string) { const s = this.stats.get(p); return s ? { tier: s.tier, status: s.status, rating: s.rating, jobs: s.jobs } : undefined; }
   async providerTier(p: string) { return this.stats.get(p)?.tier ?? 0; }
 }

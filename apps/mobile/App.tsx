@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, I18nManager, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
@@ -12,10 +12,8 @@ import { Avatar, Badge, Button, Card, CardSkeleton, Divider, Empty, FadeIn, Fiel
 
 I18nManager.allowRTL(false); // direction is handled per-view so switching language needs no restart
 
-const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void; t: (k: Key) => string; rtl: boolean }>(null!);
-const useT = () => useContext(LangCtx);
-const CATS = [["cleaning", "✨"], ["diy", "🔧"], ["garden", "🌿"], ["tutoring", "📚"], ["errands", "🛒"], ["rides", "🚗"], ["pets", "🐾"], ["lending", "📦"]] as const;
-const emojiOf = (c: string) => CATS.find((x) => x[0] === c)?.[1] ?? "•";
+import { CATS, LangCtx, emojiOf, useT } from "./src/lang";
+import { ProviderOffers, ProviderToday } from "./src/provider";
 
 interface Hit { id: string; title: string; categoryId: string; priceCentimes: number; pricingModel: string; distanceM: number; rating: number; jobs: number; tier: number; availableThisWeek: boolean; providerId: string }
 interface Booking { id: string; state: string; mode: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string }
@@ -83,18 +81,23 @@ function Login({ onDone }: { onDone: () => void }) {
 }
 
 /* ---------- main ---------- */
-type Tab = "home" | "bookings" | "profile";
+type Tab = "home" | "bookings" | "profile" | "today" | "offers";
 function Main({ onLogout }: { onLogout: () => void }) {
   const { t } = useT(); const ins = useSafeAreaInsets();
+  const [mode, setMode] = useState<"customer" | "provider">("customer");
+  useEffect(() => { SecureStore.getItemAsync("mode").then((m) => { if (m === "provider") { setMode("provider"); setTab("today"); } }); }, []); // eslint-disable-line
+  const switchMode = (m: "customer" | "provider") => { setMode(m); SecureStore.setItemAsync("mode", m); setTab(m === "provider" ? "today" : "home"); };
   const [tab, setTab] = useState<Tab>("home"); const [where, setWhere] = useState(DEFAULT_CENTER); const [located, setLocated] = useState(false);
   const useMyLocation = async () => { const p = await Location.requestForegroundPermissionsAsync(); if (p.status !== "granted") return; const pos = await Location.getCurrentPositionAsync({}); setWhere({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocated(true); };
-  const tabs: [Tab, string, string][] = [["home", "🏠", t("home")], ["bookings", "🧾", t("bookings")], ["profile", "👤", t("profile")]];
+  const tabs: [Tab, string, string][] = mode === "provider" ? [["today", "📅", t("today")], ["offers", "🛠️", t("offers")], ["profile", "👤", t("profile")]] : [["home", "🏠", t("home")], ["bookings", "🧾", t("bookings")], ["profile", "👤", t("profile")]];
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
+        {tab === "today" && <ProviderToday insetTop={ins.top} />}
+        {tab === "offers" && <ProviderOffers insetTop={ins.top} />}
         {tab === "home" && <Home where={where} located={located} insetTop={ins.top} />}
         {tab === "bookings" && <Bookings insetTop={ins.top} />}
-        {tab === "profile" && <Profile insetTop={ins.top} onLogout={onLogout} located={located} useMyLocation={useMyLocation} />}
+        {tab === "profile" && <Profile insetTop={ins.top} mode={mode} onSwitch={switchMode} onLogout={onLogout} located={located} useMyLocation={useMyLocation} />}
       </View>
       <View style={[{ flexDirection: "row", backgroundColor: C.card, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingTop: 8, paddingBottom: Math.max(ins.bottom, 10) }]}>
         {tabs.map(([k, i, l]) => (
@@ -232,6 +235,8 @@ function Bookings({ insetTop }: { insetTop: number }) {
                 <Badge label={t(`s_${item.state}` as Key)} t={stateTone(item.state)} dot />
               </View>
               {ACTIVE.includes(item.state) && <Stepper state={item.state} />}
+              {["Requested", "Accepted"].includes(item.state) && <Button label={t("cancelBooking")} variant="outline" small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/cancel`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
+              {item.state === "Completed" && <Button label={t("confirmDone")} small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/confirm`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {live[`booking:${item.id}`] && <Text style={{ color: C.green, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>📡 {t("liveOn")} · {live[`booking:${item.id}`]}</Text>}
             </Card>
           </FadeIn>
@@ -241,7 +246,7 @@ function Bookings({ insetTop }: { insetTop: number }) {
 }
 
 /* ---------- profile ---------- */
-function Profile({ insetTop, onLogout, located, useMyLocation }: { insetTop: number; onLogout: () => void; located: boolean; useMyLocation: () => void }) {
+function Profile({ insetTop, mode, onSwitch, onLogout, located, useMyLocation }: { insetTop: number; mode: "customer" | "provider"; onSwitch: (m: "customer" | "provider") => void; onLogout: () => void; located: boolean; useMyLocation: () => void }) {
   const { t } = useT(); const [me, setMe] = useState<{ phone: string } | null>(null);
   useEffect(() => { api("/v1/me").then(setMe).catch(() => {}); }, []);
   return (
@@ -252,6 +257,7 @@ function Profile({ insetTop, onLogout, located, useMyLocation }: { insetTop: num
           <Avatar id={me?.phone ?? "me"} label={me?.phone?.slice(-2) ?? "··"} size={56} />
           <View><Text style={{ fontWeight: "800", fontSize: 18, color: C.ink }}>{me?.phone ?? "…"}</Text><Text style={{ color: C.mute, marginTop: 3 }}>{t("account")}</Text></View>
         </Card>
+        <Card style={{ marginTop: 16, paddingVertical: 4 }}><Row emoji={mode === "provider" ? "🙋" : "🧰"} label={mode === "provider" ? t("modeCustomer") : t("modeProvider")} onPress={() => onSwitch(mode === "provider" ? "customer" : "provider")} /></Card>
         <SectionTitle title={t("language")} /><Card style={{ padding: 12 }}><LangPills /></Card>
         <SectionTitle title={t("location")} />
         <Card style={{ paddingVertical: 4 }}><Row emoji="📍" label={located ? "GPS" : t("usingCenter")} /><Divider /><Row emoji="🧭" label={t("useMyLocation")} onPress={useMyLocation} /></Card>

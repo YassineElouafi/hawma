@@ -124,3 +124,20 @@ describe("refresh tokens", () => {
     expect(r.json().devCode).toMatch(/^\d{6}$/);
   });
 });
+
+describe("provider mode API", () => {
+  it("provider sees own offers and profile; incoming request accepted via the same booking commands", async () => {
+    const provider = await login("0601112233"), customer = await login("0602223344");
+    const h = (t: string) => ({ authorization: `Bearer ${t}` });
+    expect((await app.inject({ url: "/v1/me/provider", headers: h(provider.accessToken) })).json()).toMatchObject({ tier: 0, status: "none" });
+    OVERRIDES.catalogueRepo.stats.set(provider.userId, { rating: 0, jobs: 0, tier: 1, cancelRate: 0, responseMin: 10, status: "active" });
+    const offer = (await post("/v1/offers", { categoryId: "tutoring", title: "Cours de maths", lat: 33.58, lng: -7.63, basePriceCentimes: 8000 }, provider.accessToken)).json();
+    expect((await app.inject({ url: "/v1/offers/mine", headers: h(provider.accessToken) })).json().map((o: { id: string }) => o.id)).toEqual([offer.id]);
+    expect((await app.inject({ url: "/v1/offers/mine", headers: h(customer.accessToken) })).json()).toEqual([]);
+    const b = (await post("/v1/bookings", { mode: "catalogue", providerId: provider.userId, totalCentimes: 8000 }, customer.accessToken)).json();
+    const mine = (await app.inject({ url: "/v1/bookings", headers: h(provider.accessToken) })).json();
+    expect(mine.map((x: { id: string }) => x.id)).toContain(b.id);                 // the request shows up for the provider
+    expect((await post(`/v1/bookings/${b.id}/accept`, undefined, provider.accessToken)).json().state).toBe("Accepted");
+    expect((await post(`/v1/bookings/${b.id}/cancel`, undefined, customer.accessToken)).json().state).toBe("Cancelled"); // customer can still cancel
+  });
+});

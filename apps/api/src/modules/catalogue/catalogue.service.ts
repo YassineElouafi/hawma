@@ -18,6 +18,8 @@ export interface CatalogueRepo {
   busy(providerId: string, fromDate: string, days: number): Promise<Busy[]>;
   categoryTier(categoryId: string): Promise<number | undefined>;
   providerTier(providerId: string): Promise<number>;
+  offersOf(providerId: string): Promise<OfferRow[]>;
+  providerProfile(providerId: string): Promise<{ tier: number; status: string; rating: number; jobs: number } | undefined>;
 }
 
 @Injectable()
@@ -31,6 +33,9 @@ export class CatalogueService {
     if (have < need) throw new ForbiddenException(`category requires verification tier ${need} (you have ${have})`);
     return this.repo.createOffer(providerId, o);
   }
+
+  offersOf(providerId: string) { return this.repo.offersOf(providerId); }
+  async providerSummary(providerId: string) { return (await this.repo.providerProfile(providerId)) ?? { tier: 0, status: "none", rating: 0, jobs: 0 }; }
 
   async deactivate(providerId: string, id: string) {
     const o = await this.repo.getOffer(id);

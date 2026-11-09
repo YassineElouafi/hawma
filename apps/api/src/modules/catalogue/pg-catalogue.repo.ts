@@ -54,5 +54,7 @@ export class PgCatalogueRepo implements CatalogueRepo {
     return [...rows].map((r) => ({ date: r.d, startMin: r.s, endMin: r.e }));
   }
   async categoryTier(id: string) { const [r] = await this.db.select({ t: s.categories.requiredTier }).from(s.categories).where(eq(s.categories.id, id)); return r?.t; }
+  async offersOf(providerId: string) { return (await this.db.select().from(s.offers).where(eq(s.offers.providerId, providerId))).map(toOffer); }
+  async providerProfile(id: string) { const [r] = await this.db.select().from(s.providers).where(eq(s.providers.userId, id)); return r && { tier: r.kycTier, status: r.status, rating: r.ratingAvg, jobs: r.jobsCompleted }; }
   async providerTier(id: string) { const [r] = await this.db.select({ t: s.providers.kycTier }).from(s.providers).where(eq(s.providers.userId, id)); return r?.t ?? 0; }
 }

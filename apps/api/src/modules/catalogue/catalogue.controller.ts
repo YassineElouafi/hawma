@@ -22,6 +22,8 @@ export class CatalogueController {
 
   @Post("offers") async publish(@Headers("authorization") h: string, @Body() b: unknown) { return this.svc.publish(await this.uid(h), offerSchema.parse(b)); }
   @Delete("offers/:id") @HttpCode(204) async remove(@Headers("authorization") h: string, @Param("id") id: string) { await this.svc.deactivate(await this.uid(h), id); }
+  @Get("offers/mine") async mine(@Headers("authorization") h: string) { return this.svc.offersOf(await this.uid(h)); }
+  @Get("me/provider") async provider(@Headers("authorization") h: string) { return this.svc.providerSummary(await this.uid(h)); }
   @Get("search") search(@Query() q: unknown) { return this.svc.search(searchSchema.parse(q), new Date().toISOString().slice(0, 10)); }
   @Get("offers/:id/slots") slots(@Param("id") id: string, @Query() q: unknown) { const v = slotsSchema.parse(q); return this.svc.slots(id, v.from, v.days, v.durationMin); }
   @Put("me/availability") @HttpCode(204) async availability(@Headers("authorization") h: string, @Body() b: unknown) { await this.svc.setAvailability(await this.uid(h), rulesSchema.parse(b).rules); }
