@@ -10,7 +10,7 @@ export class PgReviewRepo implements ReviewRepo {
   constructor(private db: PostgresJsDatabase) {}
   async create(r: Omit<Review, "id" | "createdAt">) {
     try { const [row] = await this.db.insert(s.reviews).values({ bookingId: r.bookingId, authorId: r.authorId, subjectId: r.subjectId, rating: r.rating, comment: r.comment }).returning(); return toR(row); }
-    catch (e) { if (String((e as { message?: string }).message).includes("review_once_uq") || (e as { code?: string }).code === "23505") throw new ConflictException("you already reviewed this booking"); throw e; }
+    catch (e) { const code = (e as { code?: string; cause?: { code?: string } }); if (code.code === "23505" || code.cause?.code === "23505") throw new ConflictException("you already reviewed this booking"); throw e; }
   }
   async forSubject(id: string, limit: number) { return (await this.db.select().from(s.reviews).where(eq(s.reviews.subjectId, id)).orderBy(desc(s.reviews.createdAt)).limit(limit)).map(toR); }
   async forBooking(id: string) { return (await this.db.select().from(s.reviews).where(eq(s.reviews.bookingId, id))).map(toR); }
