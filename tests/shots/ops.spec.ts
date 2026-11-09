@@ -11,6 +11,9 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   const days = Array.from({ length: 14 }, (_, i) => ({ date: new Date(Date.UTC(2026, 10, 1 + i)).toISOString().slice(0, 10), count: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i], gmvCentimes: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i] * 14000 }));
   await page.route("**/api/ops/stats", (r) => r.fulfill({ json: { total: 126, byState: { Settled: 61, Accepted: 14, Requested: 9, Cancelled: 12, Completed: 22, Disputed: 3, InProgress: 5 }, gmvCentimes: 1_182_000, feesCentimes: 177_300, perDay: days, active: 19, pendingKyc: 1, fillRate: 0.78 } }));
   await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: kyc }));
+  const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await page.route("**/api/ops/kyc/*/documents", (r) => r.fulfill({ json: [{ id: "d1", kind: "cin_front", mime: "image/png", size: 70 }, { id: "d2", kind: "selfie", mime: "image/png", size: 70 }] }));
+  await page.route("**/api/ops/documents/*", (r) => r.fulfill({ status: 200, contentType: "image/png", body: PNG1 }));
   await page.route("**/api/ops/kyc/*/approve", (r) => { decisions.push(r.request().postDataJSON().reason); r.fulfill({ json: { ...kyc[0], status: "approved" } }); });
   await page.route(/\/api\/ops\/bookings(\?.*)?$/, (r) => r.fulfill({ json: [booking] }));
   await page.route("**/api/ops/bookings/*", (r) => r.fulfill({ json: booking }));
@@ -39,6 +42,7 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByRole("heading", { name: "Verification queue" })).toBeVisible();
   await page.screenshot({ path: "screenshots/ops-2-kyc.png" });
   await page.getByRole("button", { name: "Review" }).click();
+  await expect(page.getByRole("button", { name: "View cin_front" })).toBeVisible();
   const approve = page.getByRole("button", { name: "Approve" });
   await expect(approve).toBeDisabled();                                   // reason required
   await page.getByLabel(/Reason/).fill("documents match the applicant");

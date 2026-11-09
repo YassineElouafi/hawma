@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, ScrollView, Switch, Text, View } from "react-native";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 import { api, ApiError, accessToken, currentUserId, post } from "./api";
 import { DEFAULT_CENTER, WS_URL } from "./config";
 import type { Key } from "./i18n";
@@ -40,6 +41,35 @@ function useLocationSharing(jobIds: string[], enabled: boolean) {
   }, [key, enabled]); // eslint-disable-line
 }
 
+const DOC_KINDS = ["cin_front", "cin_back", "selfie"] as const;
+function DocUploader({ verificationId, onChange }: { verificationId: string; onChange: () => void }) {
+  const { t } = useT(); const [done, setDone] = useState<Record<string, boolean>>({}); const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => { api(`/v1/verifications/${verificationId}/documents`).then((d: { kind: string }[]) => setDone(Object.fromEntries(d.map((x) => [x.kind, true])))).catch(() => {}); }, [verificationId]);
+  const pick = async (kind: (typeof DOC_KINDS)[number], source: "camera" | "gallery") => {
+    const perm = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ["images"], quality: 0.4, base64: true, allowsEditing: false };
+    const res = source === "camera" ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
+    const b64 = res.canceled ? undefined : res.assets[0]?.base64; if (!b64) return;
+    setBusy(kind);
+    try { await post(`/v1/verifications/${verificationId}/documents`, { kind, data: b64 }); setDone((d) => ({ ...d, [kind]: true })); onChange(); }
+    catch (e) { Alert.alert(e instanceof ApiError && e.status === 413 ? t("tooLarge") : e instanceof ApiError ? e.message : t("uploadFail")); } finally { setBusy(null); }
+  };
+  const choose = (kind: (typeof DOC_KINDS)[number]) => Alert.alert(t(`d_${kind}` as Key), undefined, [{ text: t("camera"), onPress: () => pick(kind, "camera") }, { text: t("gallery"), onPress: () => pick(kind, "gallery") }, { text: "✕", style: "cancel" }]);
+  return (
+    <View style={{ marginTop: 16 }}>
+      <Text style={{ fontWeight: "800", color: C.ink, fontSize: 16 }}>{t("docsTitle")}</Text><Text style={{ color: C.mute, marginTop: 4, lineHeight: 19 }}>{t("docsHint")}</Text>
+      {DOC_KINDS.map((k) => (
+        <View key={k} style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: done[k] ? C.greenSoft : C.emeraldSoft, alignItems: "center", justifyContent: "center" }}><Text style={{ fontSize: 18 }}>{done[k] ? "✅" : k === "selfie" ? "🤳" : "🪪"}</Text></View>
+          <View style={{ flex: 1 }}><Text style={{ fontWeight: "700", color: C.ink }}>{t(`d_${k}` as Key)}</Text>{done[k] && <Text style={{ color: C.green, fontSize: 12, fontWeight: "600" }}>{t("uploaded")}</Text>}</View>
+          <Button label={done[k] ? t("retake") : t("addPhoto")} variant={done[k] ? "outline" : "primary"} small busy={busy === k} onPress={() => choose(k)} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function ProviderToday({ insetTop }: { insetTop: number }) {
   const { t } = useT(); const me = currentUserId();
   const [sum, setSum] = useState<Summary | null>(null); const [ver, setVer] = useState<Verification[] | null>(null); const [jobs, setJobs] = useState<Booking[] | null>(null);
@@ -65,6 +95,7 @@ export function ProviderToday({ insetTop }: { insetTop: number }) {
             <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink }}>{t("becomeProvider")}</Text><Text style={{ color: C.mute, marginTop: 6, lineHeight: 20 }}>{t("becomeProviderHint")}</Text>
             {latest ? <View style={{ marginTop: 14, flexDirection: "row", alignItems: "center", gap: 10 }}><Text style={{ fontWeight: "700", color: C.ink }}>{t("vStatus")}</Text><Badge label={t(`v_${latest.status}` as Key)} t={latest.status === "approved" ? "green" : latest.status === "rejected" ? "red" : "amber"} dot /></View> : null}
             {latest?.reason ? <Text style={{ color: C.terracotta, marginTop: 8 }}>{latest.reason}</Text> : null}
+            {latest && (latest.status === "in_review" || latest.status === "submitted") && <DocUploader verificationId={latest.id} onChange={load} />}
             {(!latest || latest.status === "rejected") && <Button label={t("applyVerify")} icon="🛡️" onPress={apply} style={{ marginTop: 16 }} />}
           </Card>
         ) : (

@@ -186,6 +186,33 @@ function Overview({ token, go }: { token: string; go: (p: Page) => void }) {
 }
 
 /* ---------- verifications ---------- */
+type DocMeta = { id: string; kind: string; mime: string; size: number };
+/** Fetches each (audited) document with the staff token and shows it as a blob URL; nothing is cached by the browser (no-store). */
+function DocGallery({ token, verificationId }: { token: string; verificationId: string }) {
+  const [docs, setDocs] = useState<{ meta: DocMeta; url: string }[] | null>(null); const [err, setErr] = useState(""); const [big, setBig] = useState<string | null>(null);
+  useEffect(() => {
+    let dead = false; const urls: string[] = [];
+    (async () => {
+      try {
+        const metas = await call<DocMeta[]>(token, `/ops/kyc/${verificationId}/documents`);
+        const out = await Promise.all(metas.map(async (meta) => { const r = await fetch(`${API}/ops/documents/${meta.id}`, { headers: { authorization: `Bearer ${token}` } }); if (!r.ok) throw new Error("document unavailable"); const u = URL.createObjectURL(await r.blob()); urls.push(u); return { meta, url: u }; }));
+        if (!dead) setDocs(out);
+      } catch (e) { if (!dead) setErr((e as Error).message); }
+    })();
+    return () => { dead = true; urls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [token, verificationId]);
+  if (err) return <ErrBox m={err} />;
+  if (!docs) return <div className="mt-4 grid grid-cols-3 gap-2"><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /></div>;
+  if (!docs.length) return <p className="mt-4 rounded-lg bg-ops-amber/15 px-3 py-2 text-[12.5px]">No documents uploaded yet — you can still reject and ask the provider to resubmit.</p>;
+  return (
+    <>
+      <p className="mb-1.5 mt-4 text-[12.5px] font-medium">Documents <span className="font-normal text-ops-muted">(viewing is audit-logged)</span></p>
+      <div className="grid grid-cols-3 gap-2">{docs.map((d) => <button key={d.meta.id} onClick={() => setBig(d.url)} className="group relative overflow-hidden rounded-lg border border-ops-border" aria-label={`View ${d.meta.kind}`}><img src={d.url} alt={d.meta.kind} className="h-20 w-full object-cover transition group-hover:scale-105" /><span className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-0.5 text-[10px] text-white">{d.meta.kind.replace("_", " ")}</span></button>)}</div>
+      {big && <div className="fixed inset-0 z-[70] grid place-items-center bg-black/80 p-4" onClick={() => setBig(null)} role="dialog" aria-label="Document preview"><img src={big} alt="document" className="max-h-full max-w-full rounded-lg" /></div>}
+    </>
+  );
+}
+
 function KycQueue({ token, staff, onChange }: { token: string; staff: Staff; onChange: (n: number) => void }) {
   const { data, err, reload } = useLoad<Kyc[]>(token, "/ops/kyc"); const toast = useToast();
   const [sel, setSel] = useState<Kyc | null>(null); const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false); const [e2, setE2] = useState("");
@@ -215,6 +242,7 @@ function KycQueue({ token, staff, onChange }: { token: string; staff: Staff; onC
           <motion.div initial={{ scale: 0.97, y: 10 }} animate={{ scale: 1, y: 0 }} className="ops-root w-full max-w-md rounded-xl border border-ops-border bg-ops-card p-5 shadow-2xl">
             <div className="flex items-start justify-between"><div><h2 className="text-base font-semibold">Tier {sel.tier} verification</h2><p className="mt-0.5 font-mono text-xs text-ops-muted">applicant {sel.userId}</p></div><OBtn variant="ghost" size="sm" aria-label="Close" onClick={() => setSel(null)}><X size={15} /></OBtn></div>
             <div className="mt-3 flex flex-wrap gap-1.5">{sel.documents.map((d) => <Pill key={d} tone="accent">{d.replace("_", " ")}</Pill>)}</div>
+            <DocGallery token={token} verificationId={sel.id} />
             <label htmlFor="ops-reason" className="mb-1.5 mt-5 block text-[12.5px] font-medium">Reason <span className="font-normal text-ops-muted">(min 5 characters, shown in the audit log)</span></label>
             <textarea id="ops-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full resize-none rounded-lg border border-ops-border bg-ops-card px-3 py-2 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
             <ErrBox m={e2} />
