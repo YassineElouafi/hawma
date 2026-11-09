@@ -8,6 +8,7 @@ export class ZodFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse();
     let status = 500, title = "Internal Server Error", extra: Record<string, unknown> = {};
     if (e instanceof ZodError) { status = 400; title = "Validation failed"; extra = { errors: e.issues.map((i) => ({ path: i.path.join("."), message: i.message })) }; }
+    else if (typeof (e as { statusCode?: number })?.statusCode === "number" && (e as { statusCode: number }).statusCode >= 400 && (e as { statusCode: number }).statusCode < 500 && !(e instanceof HttpException)) { status = (e as { statusCode: number }).statusCode; title = "Bad request"; }
     else if (e instanceof HttpException) { status = e.getStatus(); title = String((e.getResponse() as { message?: string })?.message ?? e.message); }
     res.status(status).header("content-type", "application/problem+json").send({ type: "about:blank", title, status, ...extra });
   }
