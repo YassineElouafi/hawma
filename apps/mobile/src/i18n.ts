@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  rate: "Noter", rateTitle: "Comment s'est passé le service ?", rateComment: "Un mot pour le prestataire (facultatif)", sendRating: "Envoyer mon avis", thanks: "Merci pour ton avis ✔", alreadyRated: "Avis déjà envoyé",
   modeProvider: "Passer en mode prestataire", modeCustomer: "Revenir en mode client", today: "Aujourd'hui", offers: "Mes offres", online: "En ligne", offline: "Hors ligne", onlineHint: "Les clients voient que tu es disponible", requests: "Demandes", noRequests: "Aucune nouvelle demande", activeJob: "Mission en cours", accept: "Accepter", decline: "Refuser", startTrip: "Je pars", arrive: "Je suis arrivé", startJob: "Commencer", complete: "Terminer", sharing: "Position partagée avec le client",
   becomeProvider: "Deviens prestataire", becomeProviderHint: "Propose tes services près de chez toi. Notre équipe vérifie ton identité avant l'activation.", applyVerify: "Demander la vérification", vStatus: "Vérification", v_in_review: "En cours d'examen", v_submitted: "Envoyée", v_approved: "Approuvée ✔", v_rejected: "Refusée",
   newOffer: "Nouvelle offre", publish: "Publier", offerTitle: "Titre du service", priceMad: "Prix (MAD)", noOffers: "Aucune offre publiée", noOffersHint: "Publie ta première offre pour recevoir des demandes.", offerPublished: "Offre publiée ✔", needVerified: "Ta vérification doit être approuvée pour publier.", confirmDone: "Confirmer", cancelBooking: "Annuler",
@@ -16,6 +17,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  rate: "قيّم", rateTitle: "كيف كانت الخدمة؟", rateComment: "كلمة للمقدّم (اختياري)", sendRating: "أرسل تقييمي", thanks: "شكرا على تقييمك ✔", alreadyRated: "تم إرسال التقييم",
   modeProvider: "التحويل إلى وضع المقدّم", modeCustomer: "العودة لوضع الزبون", today: "اليوم", offers: "عروضي", online: "متصل", offline: "غير متصل", onlineHint: "يرى الزبائن أنك متاح", requests: "الطلبات", noRequests: "لا طلبات جديدة", activeJob: "مهمة جارية", accept: "قبول", decline: "رفض", startTrip: "انطلقت", arrive: "وصلت", startJob: "ابدأ", complete: "أنهيت", sharing: "يتم مشاركة موقعك مع الزبون",
   becomeProvider: "كن مقدّم خدمة", becomeProviderHint: "اعرض خدماتك قرب منزلك. يتحقق فريقنا من هويتك قبل التفعيل.", applyVerify: "اطلب التوثيق", vStatus: "التوثيق", v_in_review: "قيد المراجعة", v_submitted: "تم الإرسال", v_approved: "تمت الموافقة ✔", v_rejected: "مرفوض",
   newOffer: "عرض جديد", publish: "نشر", offerTitle: "عنوان الخدمة", priceMad: "السعر (درهم)", noOffers: "لا عروض منشورة", noOffersHint: "انشر أول عرض لتستقبل الطلبات.", offerPublished: "تم نشر العرض ✔", needVerified: "يجب الموافقة على توثيقك قبل النشر.", confirmDone: "تأكيد", cancelBooking: "إلغاء",
@@ -31,6 +33,7 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  rate: "قيّم", rateTitle: "كيفاش داز الخدمة؟", rateComment: "كلمة للمقدّم (اختياري)", sendRating: "صيفط التقييم", thanks: "شكرا على التقييم ✔", alreadyRated: "التقييم تصيفط",
   modeProvider: "ولّي مقدّم", modeCustomer: "رجع كليان", online: "كونيكتي", offline: "ماكونيكتيش", onlineHint: "الكليان كيشوفو بلي موجود", noRequests: "ما كاين حتى طلب جديد", activeJob: "خدمة جارية", decline: "رفض", startTrip: "مشيت", arrive: "وصلت", complete: "سالات", sharing: "الموقع ديالك كيتشارى مع الكليان",
   becomeProvider: "ولّي مقدّم خدمة", becomeProviderHint: "اعرض الخدمات ديالك قرب منك. الفريق كيتأكد من الهوية قبل التفعيل.", applyVerify: "طلب التوثيق", v_in_review: "كيتراجع", v_approved: "تقبل ✔", v_rejected: "مرفوض",
   newOffer: "عرض جديد", publish: "نشر", noOffers: "ما كاين حتى عرض", noOffersHint: "نشر أول عرض باش توصلك الطلبات.", offerPublished: "تنشر العرض ✔", needVerified: "خاص التوثيق ديالك يتقبل قبل النشر.", cancelBooking: "إلغاء",

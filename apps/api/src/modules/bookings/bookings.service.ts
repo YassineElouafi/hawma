@@ -36,6 +36,7 @@ export class MemoryBookingRepo implements BookingRepo {
 @Injectable()
 export class BookingsService {
   readonly published: BookingEvent[] = []; // stand-in for the transactional outbox
+  onConfirmed?: (providerId: string | null) => Promise<void>;
   constructor(readonly repo: BookingRepo) {}
 
   async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"] }) {
@@ -68,6 +69,7 @@ export class BookingsService {
       if (command === "accept" && !b.providerId) b.providerId = userId;
       await this.repo.save(b, expected);
       this.published.push(event);
+      if (command === "confirm" && this.onConfirmed) await this.onConfirmed(b.providerId).catch(() => {});
       return { ...b, allowed: allowedCommands(b, actor) };
     } catch (e) {
       if (e instanceof IllegalTransition) throw new UnprocessableEntityException(e.message);

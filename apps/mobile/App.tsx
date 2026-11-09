@@ -237,10 +237,23 @@ function Bookings({ insetTop }: { insetTop: number }) {
               {ACTIVE.includes(item.state) && <Stepper state={item.state} />}
               {["Requested", "Accepted"].includes(item.state) && <Button label={t("cancelBooking")} variant="outline" small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/cancel`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {item.state === "Completed" && <Button label={t("confirmDone")} small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/confirm`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
+              {["Confirmed", "Settled"].includes(item.state) && <Button label={`⭐ ${t("rate")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setStars(5); setNote(""); setRateFor(item); }} />}
               {live[`booking:${item.id}`] && <Text style={{ color: C.green, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>📡 {t("liveOn")} · {live[`booking:${item.id}`]}</Text>}
             </Card>
           </FadeIn>
         )} />
+      <Sheet visible={!!rateFor} onClose={() => setRateFor(null)}>
+        <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, textAlign: "center" }}>{t("rateTitle")}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 16 }}>
+          {[1, 2, 3, 4, 5].map((n) => <Pressable key={n} onPress={() => setStars(n)} accessibilityLabel={`${n}`}><Text style={{ fontSize: 38, opacity: n <= stars ? 1 : 0.25 }}>⭐</Text></Pressable>)}
+        </View>
+        <Field label={t("rateComment")} value={note} onChangeText={setNote} multiline style={{ minHeight: 80, fontSize: 15 }} />
+        <Button label={t("sendRating")} busy={rating} style={{ marginTop: 18 }} onPress={async () => {
+          if (!rateFor) return; setRating(true);
+          try { await post(`/v1/bookings/${rateFor.id}/reviews`, { rating: stars, comment: note.trim() || undefined }); setRateFor(null); Alert.alert(t("thanks")); }
+          catch (e) { Alert.alert(e instanceof ApiError && e.status === 409 ? t("alreadyRated") : e instanceof ApiError ? e.message : t("network")); setRateFor(null); } finally { setRating(false); }
+        }} />
+      </Sheet>
     </View>
   );
 }

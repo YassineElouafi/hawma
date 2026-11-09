@@ -152,3 +152,22 @@ describe("empty JSON bodies", () => {
     expect(bad.statusCode).toBe(400);
   });
 });
+
+describe("reviews", () => {
+  it("only participants, only after completion, once each; provider rating updates", async () => {
+    const c = await login("0631231231"), p = await login("0632342342"), x = await login("0633453453");
+    OVERRIDES.catalogueRepo.stats.set(p.userId, { rating: 0, jobs: 0, tier: 1, cancelRate: 0, responseMin: 10, status: "active" });
+    const b = (await post("/v1/bookings", { mode: "catalogue", providerId: p.userId, totalCentimes: 5000 }, c.accessToken)).json();
+    expect((await post(`/v1/bookings/${b.id}/reviews`, { rating: 5 }, c.accessToken)).statusCode).toBe(422);        // too early
+    for (const cmd of ["accept", "start-trip", "arrive", "start-job", "complete"]) await post(`/v1/bookings/${b.id}/${cmd}`, undefined, p.accessToken);
+    expect((await post(`/v1/bookings/${b.id}/reviews`, { rating: 5 }, x.accessToken)).statusCode).toBe(403);       // stranger
+    expect((await post(`/v1/bookings/${b.id}/reviews`, { rating: 9 }, c.accessToken)).statusCode).toBe(400);       // out of range
+    const r1 = await post(`/v1/bookings/${b.id}/reviews`, { rating: 4, comment: "Très pro" }, c.accessToken);
+    expect(r1.statusCode).toBe(201); expect(r1.json()).toMatchObject({ subjectId: p.userId, rating: 4 });
+    expect((await post(`/v1/bookings/${b.id}/reviews`, { rating: 5 }, c.accessToken)).statusCode).toBe(409);       // once per author
+    expect((await post(`/v1/bookings/${b.id}/reviews`, { rating: 5 }, p.accessToken)).statusCode).toBe(201);       // provider reviews the customer
+    expect(OVERRIDES.catalogueRepo.stats.get(p.userId)!.rating).toBe(4);
+    const list = (await app.inject({ url: `/v1/providers/${p.userId}/reviews` })).json();
+    expect(list).toHaveLength(1); expect(list[0].comment).toBe("Très pro");
+  });
+});
