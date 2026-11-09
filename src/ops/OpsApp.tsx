@@ -158,7 +158,7 @@ function Overview({ token, go }: { token: string; go: (p: Page) => void }) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {s ? <>
           <StatTile label="Bookings" value={s.total} icon={<Activity size={15} />} spark={days.map((d) => d.count)} delta={delta(days.map((d) => d.count))} />
-          <StatTile label="Completed GMV" value={s.gmvCentimes / 100} format={(n) => `${Math.round(n).toLocaleString("en-US")} MAD`} icon={<Banknote size={15} />} spark={days.map((d) => d.gmvCentimes / 100)} color="var(--ops-blue)" delta={delta(days.map((d) => d.gmvCentimes))} />
+          <StatTile label="Completed GMV" value={s.gmvCentimes / 100} format={(n) => Math.round(n).toLocaleString("en-US")} unit="MAD" icon={<Banknote size={15} />} spark={days.map((d) => d.gmvCentimes / 100)} color="var(--ops-blue)" delta={delta(days.map((d) => d.gmvCentimes))} />
           <StatTile label="Fill rate" value={(s.fillRate ?? 0) * 100} format={(n) => (s.fillRate == null ? "—" : `${Math.round(n)}%`)} icon={<Gauge size={15} />} color="var(--ops-green)" />
           <StatTile label="Verification queue" value={s.pendingKyc} icon={<Users2 size={15} />} color="var(--ops-amber)" />
         </> : Array.from({ length: 4 }).map((_, i) => <Card key={i} className="p-5"><Skeleton className="h-3 w-24" /><Skeleton className="mt-5 h-8 w-32" /></Card>)}

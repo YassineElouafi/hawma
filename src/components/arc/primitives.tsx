@@ -111,14 +111,14 @@ export function BarList({ items }: { items: { label: string; value: number; tone
 }
 
 /* ---------- Stat tile ---------- */
-export function StatTile({ label, value, format, delta, spark, color, icon }: { label: string; value: number; format?: (n: number) => string; delta?: number | null; spark?: number[]; color?: string; icon?: React.ReactNode }) {
+export function StatTile({ label, value, format, delta, spark, color, icon, unit }: { label: string; value: number; unit?: string; format?: (n: number) => string; delta?: number | null; spark?: number[]; color?: string; icon?: React.ReactNode }) {
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
       <CardHeader><CardTitle>{label}</CardTitle><span className="text-ops-muted">{icon}</span></CardHeader>
-      <div className="flex items-end justify-between gap-3 px-5 pb-4 pt-2">
+      <div className="flex min-h-[84px] items-end justify-between gap-3 px-5 pb-4 pt-2">
         <div>
-          <div className="text-[28px] font-semibold leading-none tracking-tight"><CountUp value={value} format={format} /></div>
-          {delta != null && <div className={cn("mt-2 text-xs font-medium", delta >= 0 ? "text-ops-green" : "text-ops-red")}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="font-normal text-ops-muted">vs previous</span></div>}
+          <div className="whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight"><CountUp value={value} format={format} />{unit && <span className="ms-1 text-sm font-medium text-ops-muted">{unit}</span>}</div>
+          {delta != null && <div className={cn("mt-2 text-xs font-medium", delta >= 0 ? "text-ops-green" : "text-ops-red")}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="font-normal text-ops-muted">vs prev.</span></div>}
         </div>
         {spark && <div className="w-28 shrink-0"><Sparkline data={spark} color={color} /></div>}
       </div>
