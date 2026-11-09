@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import App from "@/app/App";
+import { Faq, ProviderSection, Showcase, SiteFooter, StatsBand } from "@/landing-blocks";
 
 const fade = { initial: { opacity: 0, y: 28 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-60px" }, transition: { duration: .6, ease: "easeOut" as const } };
 
@@ -67,6 +68,8 @@ export default function Landing() {
         </div>
       </div>
 
+      <StatsBand />
+
       <section id="how" className="mx-auto max-w-6xl px-5 py-28">
         <motion.div {...fade}><h2 className="font-display text-4xl font-semibold md:text-6xl">{t("how_h")}</h2><p className="mt-4 max-w-xl text-lg text-muted-foreground">{t("how_p")}</p></motion.div>
         <div className="mt-14 grid gap-5 md:grid-cols-3">
@@ -94,6 +97,9 @@ export default function Landing() {
         </div>
       </section>
 
+      <Showcase />
+      <ProviderSection />
+
       <section className="mx-auto max-w-4xl px-5 py-28">
         <motion.h2 {...fade} className="text-center font-display text-4xl font-semibold md:text-5xl">{t("vs_h")}</motion.h2>
         <motion.div {...fade} className="mt-12 overflow-hidden rounded-3xl border border-border bg-card shadow-xl shadow-primary/5">
@@ -102,6 +108,8 @@ export default function Landing() {
           {["vs4", "vs5"].map((a) => <div key={a} className="grid grid-cols-[1.1fr_1.2fr_1fr] items-center border-t border-border px-6 py-4 text-sm"><span className="text-muted-foreground">{t(a)}</span><Check className="text-primary" size={20} /><X className="text-muted-foreground/50" size={20} /></div>)}
         </motion.div>
       </section>
+
+      <Faq />
 
       <section className="mx-auto max-w-6xl px-5 pb-24">
         <motion.div {...fade} className="zellige grain relative overflow-hidden rounded-[2.5rem] bg-primary px-6 py-20 text-center text-white">
@@ -118,7 +126,7 @@ export default function Landing() {
           </div>
         </motion.div>
       </section>
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">© 2026 Hawma · 🇲🇦 {t("foot")}</footer>
+      <SiteFooter />
     </div>
   );
 }

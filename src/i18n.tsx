@@ -9,6 +9,20 @@ export const LANGS: { id: Lang; label: string }[] = [
 
 type Dict = Record<string, string | string[]>;
 const fr: Dict = {
+  sv1: "8", sv1l: "catégories au lancement", sv2: "3", sv2l: "langues, dont droite-à-gauche", sv3: "20 s", sv3l: "pour accepter une demande urgente", sv4: "500 m – 50 km", sv4l: "rayon que tu choisis",
+  show_h: "Tout se passe dans l'app", show_p: "Suivi en direct, paiement clair, avis vérifiés : un parcours simple pour le client, des outils sérieux pour le prestataire.",
+  m_track: "Suivi en direct", m_track_t: "Amina arrive dans 6 min", m_track_s: "En route · 1,2 km", m_step1: "Acceptée", m_step2: "En route", m_step3: "Sur place", m_step4: "Terminée",
+  m_earn: "Revenus de la semaine", m_earn_s: "Paiement chaque lundi", m_cash: "Cash encaissé", m_net: "Net après frais", m_pay: "Prochain virement",
+  m_trust: "Prestataire vérifié", m_trust_s: "CIN · selfie · casier", m_rate: "4,9 · 41 avis vérifiés",
+  prov_badge: "Pour les prestataires", prov_h: "Transforme ton talent en revenu régulier", prov_p: "Ménage, cours, bricolage, courses… Fixe tes horaires et tes prix, reçois des demandes près de chez toi et sois payé chaque semaine.",
+  prov_b1: "Tu choisis ton quartier, tes jours et tes tarifs", prov_b2: "Demandes urgentes avec 20 secondes pour répondre", prov_b3: "Cash ou virement, avec un décompte clair des frais", prov_b4: "Badge vérifié et avis qui prouvent ta fiabilité", prov_cta: "Devenir prestataire",
+  faq_h: "Questions fréquentes",
+  faq1q: "Comment sont vérifiés les prestataires ?", faq1a: "Téléphone par OTP pour tous. Pour entrer chez les gens, CIN, selfie et justificatifs sont contrôlés par notre équipe avant d'activer le profil.",
+  faq2q: "Comment payer ?", faq2a: "En cash à la fin du service au lancement, puis par carte et mobile. Un bouton de litige permet de signaler un problème.",
+  faq3q: "Mes données et ma position sont-elles protégées ?", faq3a: "Ta position exacte n'est jamais montrée aux autres : seule une zone arrondie est visible, et l'adresse n'est partagée qu'après acceptation.",
+  faq4q: "Où est disponible Hawma ?", faq4a: "On commence par Casablanca, quartier par quartier. Laisse ton contact pour être prévenu.",
+  faq5q: "Combien ça coûte ?", faq5a: "Parcourir et réserver est gratuit. Les frais de service seront affichés avant chaque réservation, sans surprise.",
+  f_prod: "Produit", f_company: "Hawma", f_legal: "Légal", f_a1: "Comment ça marche", f_a2: "Pourquoi Hawma", f_a3: "Devenir prestataire", f_b1: "Architecture", f_b2: "Contact", f_c1: "Confidentialité", f_c2: "Conditions", f_tag: "Les services de ton quartier, en confiance.",
   // landing
   nav_how: "Comment ça marche", nav_features: "Pourquoi Hawma", nav_cta: "Ouvrir l'app",
   hero_badge: "Bientôt dans ton quartier · Maroc",
@@ -54,6 +68,20 @@ const fr: Dict = {
 };
 
 const ar: Dict = {
+  sv1: "8", sv1l: "أصناف عند الانطلاق", sv2: "3", sv2l: "لغات منها من اليمين لليسار", sv3: "20 ث", sv3l: "لقبول طلب عاجل", sv4: "500 م – 50 كلم", sv4l: "نطاق تختاره أنت",
+  show_h: "كل شيء داخل التطبيق", show_p: "تتبع مباشر، دفع واضح، تقييمات موثّقة: رحلة بسيطة للزبون وأدوات جادة للمقدّم.",
+  m_track: "تتبع مباشر", m_track_t: "أمينة تصل خلال 6 دقائق", m_track_s: "في الطريق · 1.2 كلم", m_step1: "مقبولة", m_step2: "في الطريق", m_step3: "وصلت", m_step4: "منتهية",
+  m_earn: "أرباح الأسبوع", m_earn_s: "الدفع كل اثنين", m_cash: "نقد محصّل", m_net: "الصافي بعد الرسوم", m_pay: "التحويل القادم",
+  m_trust: "مقدّم موثّق", m_trust_s: "بطاقة · صورة · سجل", m_rate: "4.9 · 41 تقييما موثّقا",
+  prov_badge: "للمقدّمين", prov_h: "حوّل موهبتك إلى دخل منتظم", prov_p: "تنظيف، دروس، إصلاحات، مشتريات… حدّد أوقاتك وأسعارك، استقبل طلبات قريبة منك واقبض كل أسبوع.",
+  prov_b1: "تختار حيّك وأيامك وأسعارك", prov_b2: "طلبات عاجلة بمهلة 20 ثانية للرد", prov_b3: "نقدا أو تحويل مع حساب واضح للرسوم", prov_b4: "شارة التوثيق والتقييمات تثبت جدّيتك", prov_cta: "كن مقدّم خدمة",
+  faq_h: "أسئلة شائعة",
+  faq1q: "كيف يتم التحقق من المقدّمين؟", faq1a: "رمز OTP للجميع. ولدخول البيوت يراجع فريقنا البطاقة الوطنية والصورة والوثائق قبل تفعيل الحساب.",
+  faq2q: "كيف أدفع؟", faq2a: "نقدا عند انتهاء الخدمة عند الانطلاق، ثم بالبطاقة والهاتف. وزر النزاع للإبلاغ عن أي مشكل.",
+  faq3q: "هل بياناتي وموقعي محميان؟", faq3a: "موقعك الدقيق لا يظهر لأحد: تظهر منطقة تقريبية فقط، ولا يُشارك العنوان إلا بعد القبول.",
+  faq4q: "أين تتوفر حومة؟", faq4a: "نبدأ بالدار البيضاء حيّا بعد حي. اترك بياناتك لنخبرك.",
+  faq5q: "كم تكلّف؟", faq5a: "التصفح والحجز مجانيان. وتظهر رسوم الخدمة قبل كل حجز دون مفاجآت.",
+  f_prod: "المنتج", f_company: "حومة", f_legal: "قانوني", f_a1: "كيف يعمل", f_a2: "لماذا حومة", f_a3: "كن مقدّم خدمة", f_b1: "البنية التقنية", f_b2: "تواصل", f_c1: "الخصوصية", f_c2: "الشروط", f_tag: "خدمات حيّك، بثقة.",
   nav_how: "كيف يعمل", nav_features: "لماذا حومة", nav_cta: "افتح التطبيق",
   hero_badge: "قريبا في حيّك · المغرب",
   hero_h1a: "حيّك،", hero_h1b: "فريقك.",
@@ -98,6 +126,16 @@ const ar: Dict = {
 
 const da: Dict = {
   ...ar,
+  sv3l: "باش تقبل طلب مستعجل", sv4l: "المسافة اللي كتختار",
+  show_h: "كلشي داخل التطبيق", show_p: "تتبع مباشر، خلاص واضح، تقييمات موثّقة: طريق بسيط للكليان وأدوات جدية للمقدّم.",
+  m_track_t: "أمينة غاتوصل فـ6 دقايق", m_step3: "وصلات", m_earn: "الأرباح د السيمانة", m_earn_s: "الخلاص كل تنين", m_cash: "الكاش اللي تقبض", m_net: "الصافي من بعد الرسوم", m_pay: "التحويل الجاي",
+  m_trust: "مقدّم موثّق", m_rate: "4.9 · 41 تقييم موثّق",
+  prov_badge: "للمقدّمين", prov_h: "خلّي الموهبة ديالك دخل منتظم", prov_p: "نقاء، دروس، بريكولاج، كورسات… حدّد وقتك وثمنك، توصل بطلبات قريبة منك وقبض كل سيمانة.",
+  prov_b1: "كتختار حيّك وأيامك وثمنك", prov_b2: "طلبات مستعجلة وعندك 20 ثانية تجاوب", prov_b3: "كاش ولا تحويل وحساب واضح للرسوم", prov_b4: "شارة التوثيق والتقييمات كيثبتو الثقة", prov_cta: "ولّي مقدّم خدمة",
+  faq_h: "أسئلة كتعاود", faq1q: "كيفاش كيتحقق من المقدّمين؟", faq1a: "OTP للجميع. وباش يدخلو للدور، الفريق ديالنا كيراجع الكارط ناسيونال والتصويرة والوثائق قبل التفعيل.",
+  faq2q: "كيفاش نخلّص؟", faq2a: "كاش من بعد الخدمة فالبداية، من بعد بالكارط والتيليفون. وكاين بوطون للنزاع.", faq3q: "واش المعلومات والموقع ديالي محميين؟", faq3a: "الموقع الدقيق ما كيبانش لحد: كتبان غير منطقة تقريبية، والعنوان ما كيتشاركش حتى القبول.",
+  faq4q: "فين كاينة حومة؟", faq4a: "كنبداو من الدار البيضاء حيّ حيّ. خلّي معلوماتك باش نعلموك.", faq5q: "شحال كتكلف؟", faq5a: "التصفح والحجز بلاش. والرسوم كتبان قبل كل حجز بلا مفاجآت.",
+  f_a1: "كيفاش خدام", f_a2: "علاش حومة", f_a3: "ولّي مقدّم خدمة", f_b1: "البنية التقنية", f_b2: "تواصل", f_tag: "خدمات حيّك، بالثقة.",
   nav_how: "كيفاش خدام", nav_features: "علاش حومة", nav_cta: "حلّ التطبيق",
   hero_badge: "قريب فحيّك · المغرب",
   hero_h1a: "حومتك،", hero_h1b: "فريقك.",
