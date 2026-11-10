@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, FlatList, I18nManager, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Animated, Easing, FlatList, I18nManager, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
@@ -8,6 +8,7 @@ import { api, ApiError, loadTokens, post, saveTokens, setOnLogout, accessToken }
 import { DEFAULT_CENTER, WS_URL } from "./src/config";
 import { DICT, LANGS, type Key, type Lang } from "./src/i18n";
 import { C, R, shadow } from "./src/theme";
+import { distanceM, etaMin } from "./src/geo";
 import { Avatar, Badge, Button, Card, CardSkeleton, Divider, Empty, FadeIn, Field, Row, SectionTitle, Segmented, Sheet, Stepper, stateTone } from "./src/ui";
 
 I18nManager.allowRTL(false); // direction is handled per-view so switching language needs no restart
@@ -16,7 +17,8 @@ import { CATS, LangCtx, emojiOf, useT } from "./src/lang";
 import { ProviderOffers, ProviderToday } from "./src/provider";
 
 interface Hit { id: string; title: string; categoryId: string; priceCentimes: number; pricingModel: string; distanceM: number; rating: number; jobs: number; tier: number; availableThisWeek: boolean; providerId: string }
-interface Booking { id: string; state: string; mode: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string }
+interface Booking { id: string; state: string; mode: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number; createdAt?: string }
+interface Live { lat: number; lng: number; at: number }
 const ACTIVE = ["Requested", "Offered", "Accepted", "EnRoute", "Arrived", "InProgress"];
 
 export default function App() {
@@ -232,7 +234,7 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
 
 /* ---------- bookings ---------- */
 function Bookings({ insetTop }: { insetTop: number }) {
-  const { t } = useT(); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, string>>({}); const [seg, setSeg] = useState<"active" | "past">("active");
+  const { t } = useT(); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, Live>>({}); const [detail, setDetail] = useState<Booking | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
   const load = useCallback(async () => { setBusy(true); try { setItems(await api("/v1/bookings")); } catch { setItems([]); } finally { setBusy(false); } }, []);
   useEffect(() => { load(); }, [load]);
   const ws = useRef<WebSocket | null>(null);
@@ -240,7 +242,7 @@ function Bookings({ insetTop }: { insetTop: number }) {
     const tok = accessToken(); if (!tok) return;
     const s = new WebSocket(WS_URL); ws.current = s;
     s.onopen = () => s.send(JSON.stringify({ t: "auth", token: tok }));
-    s.onmessage = (e) => { try { const m = JSON.parse(String(e.data)); if (m.t === "msg" && m.data?.type?.startsWith?.("booking.")) load(); if (m.t === "msg" && m.data?.type === "provider.location") setLive((x) => ({ ...x, [m.ch]: new Date().toLocaleTimeString() })); } catch {} };
+    s.onmessage = (e) => { try { const m = JSON.parse(String(e.data)); if (m.t === "msg" && m.data?.type?.startsWith?.("booking.")) load(); if (m.t === "msg" && m.data?.type === "provider.location") setLive((x) => ({ ...x, [m.ch]: { lat: m.data.lat, lng: m.data.lng, at: Date.now() } })); } catch {} };
     return () => s.close();
   }, [load]);
   useEffect(() => { const s = ws.current; if (!s || s.readyState !== 1 || !items) return; for (const b of items) s.send(JSON.stringify({ t: "sub", ch: `booking:${b.id}` })); }, [items]);
@@ -253,7 +255,7 @@ function Bookings({ insetTop }: { insetTop: number }) {
         ListEmptyComponent={items ? (seg === "active" ? <Empty emoji="🧾" title={t("noActive")} hint={t("noActiveHint")} /> : <Empty emoji="🗂️" title={t("noPast")} />) : <View>{[0, 1, 2].map((i) => <CardSkeleton key={i} />)}</View>}
         renderItem={({ item, index }) => (
           <FadeIn delay={Math.min(index, 8) * 40}>
-            <Card style={{ marginBottom: 10 }}>
+            <Card style={{ marginBottom: 10 }} onPress={() => setDetail(item)}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View><Text style={{ fontWeight: "800", fontSize: 16, color: C.ink }}>#{item.id.slice(0, 8)}</Text><Text style={{ color: C.mute, marginTop: 3, fontSize: 12.5 }}>{item.totalCentimes / 100} {t("mad")} · 💵 {item.paymentMethod}</Text></View>
                 <Badge label={t(`s_${item.state}` as Key)} t={stateTone(item.state)} dot />
@@ -262,10 +264,11 @@ function Bookings({ insetTop }: { insetTop: number }) {
               {["Requested", "Accepted"].includes(item.state) && <Button label={t("cancelBooking")} variant="outline" small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/cancel`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {item.state === "Completed" && <Button label={t("confirmDone")} small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/confirm`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {["Confirmed", "Settled"].includes(item.state) && <Button label={`⭐ ${t("rate")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setStars(5); setNote(""); setRateFor(item); }} />}
-              {live[`booking:${item.id}`] && <Text style={{ color: C.green, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>📡 {t("liveOn")} · {live[`booking:${item.id}`]}</Text>}
+              {live[`booking:${item.id}`] && <Text style={{ color: C.green, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>📡 {t("liveOn")}</Text>}
             </Card>
           </FadeIn>
         )} />
+      <BookingDetail booking={detail ? (items ?? []).find((b) => b.id === detail.id) ?? detail : null} live={detail ? live[`booking:${detail.id}`] : undefined} onClose={() => setDetail(null)} onCancel={async (id) => { try { await post(`/v1/bookings/${id}/cancel`); setDetail(null); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />
       <Sheet visible={!!rateFor} onClose={() => setRateFor(null)}>
         <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, textAlign: "center" }}>{t("rateTitle")}</Text>
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 16 }}>
@@ -279,6 +282,43 @@ function Bookings({ insetTop }: { insetTop: number }) {
         }} />
       </Sheet>
     </View>
+  );
+}
+
+/* ---------- booking detail: searching radar, provider card, live ETA ---------- */
+function Radar() {
+  const rings = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+  useEffect(() => { const loops = rings.map((v, i) => Animated.loop(Animated.sequence([Animated.delay(i * 600), Animated.timing(v, { toValue: 1, duration: 1800, easing: Easing.out(Easing.quad), useNativeDriver: true }), Animated.timing(v, { toValue: 0, duration: 0, useNativeDriver: true })]))); loops.forEach((l) => l.start()); return () => loops.forEach((l) => l.stop()); }, [rings]);
+  return (
+    <View style={{ height: 150, alignItems: "center", justifyContent: "center" }}>
+      {rings.map((v, i) => <Animated.View key={i} style={{ position: "absolute", width: 120, height: 120, borderRadius: 60, borderWidth: 2, borderColor: C.emerald2, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }), transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.4] }) }] }} />)}
+      <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.emerald, alignItems: "center", justifyContent: "center" }}><Text style={{ fontSize: 28 }}>📍</Text></View>
+    </View>
+  );
+}
+
+function BookingDetail({ booking, live, onClose, onCancel }: { booking: Booking | null; live?: Live; onClose: () => void; onCancel: (id: string) => void }) {
+  const { t } = useT(); const [prov, setProv] = useState<{ name: string | null; rating: number; jobs: number; tier: number } | null>(null);
+  const pid = booking?.providerId;
+  useEffect(() => { setProv(null); if (booking && pid) api(`/v1/bookings/${booking.id}/provider`).then(setProv).catch(() => {}); }, [booking?.id, pid]); // eslint-disable-line
+  if (!booking) return <Sheet visible={false} onClose={onClose}><View /></Sheet>;
+  const searching = booking.mode === "dispatch" && booking.state === "Requested";
+  const unfilled = booking.mode === "dispatch" && booking.state === "Expired";
+  const d = live && booking.lat != null && booking.lng != null ? distanceM(live.lat, live.lng, booking.lat, booking.lng) : null;
+  return (
+    <Sheet visible onClose={onClose}>
+      {searching ? <><Radar /><Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, textAlign: "center" }}>{t("searching")}</Text><Text style={{ color: C.mute, textAlign: "center", marginTop: 6, lineHeight: 20 }}>{t("searchingHint")}</Text></>
+        : unfilled ? <Empty emoji="😕" title={t("unfilledTitle")} hint={t("unfilledHint")} />
+        : <>
+          <Text style={{ fontSize: 13, color: C.mute, fontWeight: "700" }}>{t("yourProvider")}</Text>
+          {pid ? <Card style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 }}><Avatar id={pid} size={56} label={(prov?.name ?? "H").slice(0, 2)} /><View style={{ flex: 1 }}><Text style={{ fontWeight: "800", fontSize: 18, color: C.ink }}>{prov?.name ?? t("providerAnon")}</Text><Text style={{ color: C.mute, marginTop: 3 }}>⭐ {(prov?.rating ?? 0).toFixed(1)} · {prov?.jobs ?? 0} {t("jobs")}</Text></View>{(prov?.tier ?? 0) >= 1 && <Badge label={`✔ ${t("verified")}`} t="accent" />}</Card> : null}
+          <View style={{ marginTop: 14 }}><View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ fontWeight: "800", color: C.ink }}>{t(`s_${booking.state}` as Key)}</Text><Badge label={t(`s_${booking.state}` as Key)} t={stateTone(booking.state)} dot /></View><Stepper state={booking.state} /></View>
+          {d != null && ["Accepted", "EnRoute", "Arrived"].includes(booking.state) && <Card style={{ marginTop: 14, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.greenSoft }}><Text style={{ fontSize: 26 }}>🛵</Text><View><Text style={{ fontWeight: "800", color: C.ink, fontSize: 17 }}>{t("arrivesIn")} {etaMin(d)} {t("minShort")}</Text><Text style={{ color: C.mute, marginTop: 2 }}>{(d / 1000).toFixed(1)} {t("km")} {t("away")}</Text></View></Card>}
+        </>}
+      <Text style={{ color: C.mute, marginTop: 14, textAlign: "center" }}>{booking.totalCentimes / 100} {t("mad")} · 💵 {t("cash")}</Text>
+      {["Requested", "Accepted"].includes(booking.state) && <Button label={t("cancelBooking")} variant="outline" onPress={() => onCancel(booking.id)} style={{ marginTop: 14 }} />}
+      <Button label={t("back")} variant="ghost" onPress={onClose} style={{ marginTop: 4 }} />
+    </Sheet>
   );
 }
 

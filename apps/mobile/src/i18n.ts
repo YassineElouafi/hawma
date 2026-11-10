@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", providerAnon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.", details: "Détails",
   urgent: "Besoin d'aide maintenant ?", urgentHint: "On cherche le prestataire le plus proche, en direct.", requestNow: "Lancer la demande", urgentSent: "Recherche en cours… ✔", offerIncoming: "Nouvelle mission !", secShort: "s", offerGone: "Cette mission n'est plus disponible", unfilledMsg: "Personne n'est disponible pour l'instant",
   docsTitle: "Tes documents", docsHint: "Prends des photos nettes : CIN recto, verso et un selfie.", d_cin_front: "CIN (recto)", d_cin_back: "CIN (verso)", d_selfie: "Selfie", addPhoto: "Ajouter", retake: "Remplacer", camera: "Appareil photo", gallery: "Galerie", uploaded: "Envoyé ✔", tooLarge: "Photo trop lourde, réessaie.", uploadFail: "Envoi impossible",
   rate: "Noter", rateTitle: "Comment s'est passé le service ?", rateComment: "Un mot pour le prestataire (facultatif)", sendRating: "Envoyer mon avis", thanks: "Merci pour ton avis ✔", alreadyRated: "Avis déjà envoyé",
@@ -19,6 +20,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", providerAnon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.", details: "التفاصيل",
   urgent: "تحتاج مساعدة الآن؟", urgentHint: "نبحث عن أقرب مقدّم خدمة مباشرة.", requestNow: "ابدأ الطلب", urgentSent: "جارٍ البحث… ✔", offerIncoming: "مهمة جديدة!", secShort: "ث", offerGone: "لم تعد هذه المهمة متاحة", unfilledMsg: "لا أحد متاح حاليا",
   docsTitle: "وثائقك", docsHint: "التقط صورا واضحة: البطاقة الوطنية (وجه وظهر) وصورة شخصية.", d_cin_front: "البطاقة (الوجه)", d_cin_back: "البطاقة (الظهر)", d_selfie: "صورة شخصية", addPhoto: "إضافة", retake: "استبدال", camera: "الكاميرا", gallery: "المعرض", uploaded: "تم الإرسال ✔", tooLarge: "الصورة كبيرة، أعد المحاولة.", uploadFail: "تعذّر الإرسال",
   rate: "قيّم", rateTitle: "كيف كانت الخدمة؟", rateComment: "كلمة للمقدّم (اختياري)", sendRating: "أرسل تقييمي", thanks: "شكرا على تقييمك ✔", alreadyRated: "تم إرسال التقييم",
@@ -37,6 +39,7 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  searching: "كنقلّبو على المقدّم ديالك…", searchingHint: "المقدّمين القراب كيتوصلو بالطلب واحد واحد.", arrivesIn: "غايوصل فـ", away: "منك", unfilledTitle: "ما كاين حد متاح", unfilledHint: "عاود من بعد شي دقايق ولا اختار مقدّم من الكتالوج.",
   urgent: "محتاج مساعدة دابا؟", urgentHint: "كنقلّبو على أقرب مقدّم بالمباشر.", requestNow: "بدا الطلب", urgentSent: "كنقلّبو… ✔", offerIncoming: "خدمة جديدة!", offerGone: "هاد الخدمة ما بقاتش متاحة", unfilledMsg: "ما كاين حد متاح دابا",
   docsTitle: "الوثائق ديالك", docsHint: "صوّر مزيان: الكارط ناسيونال (قدّام وور) وسيلفي.", d_cin_front: "الكارط (قدّام)", d_cin_back: "الكارط (ور)", d_selfie: "سيلفي", addPhoto: "زيد", retake: "بدّل", gallery: "الغاليري", uploaded: "تصيفطات ✔", tooLarge: "التصويرة كبيرة، عاود.", uploadFail: "ما تصيفطاتش",
   rate: "قيّم", rateTitle: "كيفاش داز الخدمة؟", rateComment: "كلمة للمقدّم (اختياري)", sendRating: "صيفط التقييم", thanks: "شكرا على التقييم ✔", alreadyRated: "التقييم تصيفط",

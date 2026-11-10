@@ -189,3 +189,17 @@ describe("dispatch over HTTP", () => {
     expect((await post("/v1/dispatch-requests", { lat: 1, lng: 1, categoryId: "errands", totalCentimes: 1 }, c.accessToken)).statusCode).toBe(400); // outside Morocco
   });
 });
+
+describe("booking provider summary", () => {
+  it("participants see rating/jobs, never the phone; strangers are refused; unassigned is null", async () => {
+    const c = await login("0661919191"), p = await login("0662929292"), x = await login("0663939393");
+    OVERRIDES.catalogueRepo.stats.set(p.userId, { rating: 4.6, jobs: 12, tier: 1, cancelRate: 0, responseMin: 5, status: "active" });
+    const unassigned = (await post("/v1/bookings", { mode: "dispatch", totalCentimes: 1000 }, c.accessToken)).json();
+    const h = (t: string) => ({ authorization: `Bearer ${t}` });
+    expect((await app.inject({ url: `/v1/bookings/${unassigned.id}/provider`, headers: h(c.accessToken) })).json()).toBeNull();
+    const b = (await post("/v1/bookings", { mode: "catalogue", providerId: p.userId, totalCentimes: 1000 }, c.accessToken)).json();
+    const r = await app.inject({ url: `/v1/bookings/${b.id}/provider`, headers: h(c.accessToken) });
+    expect(r.json()).toMatchObject({ id: p.userId, rating: 4.6, jobs: 12, tier: 1 }); expect(JSON.stringify(r.json())).not.toContain("+212");
+    expect((await app.inject({ url: `/v1/bookings/${b.id}/provider`, headers: h(x.accessToken) })).statusCode).toBe(403);
+  });
+});
