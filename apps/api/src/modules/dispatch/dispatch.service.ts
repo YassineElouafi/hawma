@@ -8,6 +8,8 @@ export const OFFER_TTL_MS = 20_000;
 /** Thrown by OfferRepo.create when the booking already has an open offer, or the provider already holds one. */
 export class OfferConflict extends Error { constructor(public kind: "booking" | "provider") { super(`offer conflict: ${kind}`); } }
 export const START_RADIUS_M = 3000;
+/** A request waits this long for busy providers to free up before it is declared unfilled. */
+export const MAX_WAIT_MS = 120_000;
 
 export interface Offer { id: string; bookingId: string; providerId: string; status: "offered" | "accepted" | "rejected" | "expired"; expiresAt: string; round: number }
 export interface OfferRepo {
@@ -63,7 +65,7 @@ export class DispatchService {
     const open = tried.find((o) => o.status === "offered"); if (open) return open; // never two open offers for one booking
     const triedIds = new Set(tried.map((o) => o.providerId));
     const requiredTier = (await this.providers.requiredTier(b.categoryId)) as 0 | 1 | 2 | 3;
-    let radius = START_RADIUS_M, attempt = 0;
+    let radius = START_RADIUS_M, attempt = 0, sawBusy = false;
     for (;;) {
       const near = await this.presence.nearby(b.lat ?? 0, b.lng ?? 0, radius);
       const ids = near.map((n) => n.id).filter((id) => !triedIds.has(id) && id !== b.customerId);
@@ -74,6 +76,7 @@ export class DispatchService {
       for (const n of near) {
         const p = profs.get(n.id); if (!p || p.status !== "active" || !ids.includes(n.id)) continue;
         cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: busy.has(n.id) || holding.has(n.id), blocked: false, cashOwed: 0 });
+        if (busy.has(n.id) || holding.has(n.id)) sawBusy = true;
       }
       for (const best of rank(cands, { requiredTier, radiusM: radius, cashOwedLimit: 30_000 })) {
         let offer: Offer;
@@ -88,6 +91,9 @@ export class DispatchService {
       const next = nextRadius(radius, attempt++);
       if (next === null) break; radius = next;
     }
+    // Eligible providers exist but are all busy right now: keep the request queued (the ticker retries) until it is too old.
+    const age = this.now() - new Date(b.createdAt ?? 0).getTime();
+    if (sawBusy && age < MAX_WAIT_MS) return null;
     await this.bookings.systemCommand(bookingId, "expire");
     await this.bus.publish(`user:${b.customerId}`, { type: "dispatch.unfilled", bookingId });
     return null;
@@ -112,11 +118,17 @@ export class DispatchService {
 
   pending(providerId: string) { return this.offers.pendingFor(providerId); }
 
-  /** Run every few seconds: expire stale offers and move to the next candidate. */
+  /** Run every few seconds: expire stale offers, move to the next candidate, and retry queued requests. */
   async tick() {
     let n = 0;
     for (const o of await this.offers.expiredOpen(new Date(this.now()).toISOString())) {
       if (await this.offers.transition(o.id, "expired")) { n++; await this.matchNext(o.bookingId).catch(() => {}); }
+    }
+    // queued requests: dispatch bookings still waiting for a free provider
+    for (const w of await this.bookings.repo.listAll("Requested", 200)) {
+      if (w.mode !== "dispatch" || w.providerId) continue;
+      if ((await this.offers.forBooking(w.id)).some((o) => o.status === "offered")) continue;
+      await this.matchNext(w.id).catch(() => {});
     }
     return n;
   }

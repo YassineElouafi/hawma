@@ -11,7 +11,7 @@ let gw: ReturnType<typeof attachGateway>;
 
 beforeAll(() => {
   gw = attachGateway({ port: PORT }, {
-    bus, authTimeoutMs: 300, locMinIntervalMs: 150,
+    bus, authTimeoutMs: 300, locMinIntervalMs: 1500,
     authenticate: async (t) => { if (!t.startsWith("tok-")) throw new Error("bad token"); return t.slice(4); },
     canSubscribe: async (u, ch) => ch === `user:${u}` || (ch === `booking:${booking}` && (u === customer || u === provider)),
     canPublishLocation: async (u, b) => u === provider && b === booking,

@@ -9,7 +9,7 @@ const at = (dMeters: number) => ({ lat: MAARIF.lat + dMeters / 111_320, lng: MAA
 
 function setup() {
   let t = 1_700_000_000_000; const now = () => t;
-  const presence = new MemoryPresence(now), bus = new MemoryBus(), repo = new MemoryBookingRepo(), bookings = new BookingsService(repo);
+  const presence = new MemoryPresence(now), bus = new MemoryBus(), repo = new MemoryBookingRepo(), bookings = new BookingsService(repo, now);
   const profiles = new Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>();
   const port: ProviderPort = {
     profile: async (id) => profiles.get(id),
@@ -96,11 +96,14 @@ describe("dispatch fairness under load", () => {
   it("a provider holding an open offer is not offered a second job (no double booking)", async () => {
     const s = setup(); await s.provider("solo", 200);
     const b1 = await s.request("c1"); expect(await s.svc.pending("solo")).toHaveLength(1);
-    const b2 = await s.request("c2");                                            // only provider is busy with an open offer
-    expect((await s.bookings.getAny(b2.id)).state).toBe("Expired");
+    const b2 = await s.request("c2");                                            // only provider holds an open offer → request is QUEUED, not failed
+    expect((await s.bookings.getAny(b2.id)).state).toBe("Requested");
     expect((await s.bookings.getAny(b1.id)).state).toBe("Requested");
     const [o] = await s.svc.pending("solo"); await s.svc.accept("solo", o.id);
     expect((await s.bookings.getAny(b1.id)).providerId).toBe("solo");
+    await s.svc.tick(); expect(await s.svc.pending("solo")).toHaveLength(0);     // solo is now on a job: b2 keeps waiting
+    s.advance(121_000); await s.presence.heartbeat("solo", MAARIF.lat, MAARIF.lng); await s.svc.tick();
+    expect((await s.bookings.getAny(b2.id)).state).toBe("Expired");              // gave up after the maximum wait
   });
   it("many requests and many providers: every provider ends up with at most one job", async () => {
     const s = setup(); for (let i = 0; i < 20; i++) await s.provider(`p${i}`, 100 + i * 50);
@@ -110,5 +113,16 @@ describe("dispatch fairness under load", () => {
     const per = new Map<string, number>(); for (const b of all) if (b.providerId) per.set(b.providerId, (per.get(b.providerId) ?? 0) + 1);
     expect(Math.max(0, ...per.values())).toBeLessThanOrEqual(1);
     expect(all.filter((b) => b.state === "Accepted").length).toBeLessThanOrEqual(20);
+  });
+});
+
+describe("queued requests", () => {
+  it("a queued request is offered as soon as a provider frees up", async () => {
+    const s = setup(); await s.provider("solo", 200);
+    const b1 = await s.request("c1"); const b2 = await s.request("c2");
+    const [o1] = await s.svc.pending("solo"); await s.svc.reject("solo", o1.id);   // rejects b1; solo is free again
+    await s.svc.tick();                                                          // the ticker offers the waiting request
+    const pending = await s.svc.pending("solo"); expect(pending).toHaveLength(1);
+    expect(pending[0].bookingId).toBe(b2.id);
   });
 });

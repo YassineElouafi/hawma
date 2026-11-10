@@ -6,7 +6,7 @@ import { platformFee } from "../../domain/money";
 export interface BookingRecord {
   id: string; customerId: string; providerId: string | null; mode: Mode; state: BookingState; totalCentimes: number; feeCentimes: number;
   paymentMethod: "cash" | "card" | "wallet"; version: number; events: BookingEvent[];
-  lat?: number; lng?: number; categoryId?: string | null;
+  lat?: number; lng?: number; categoryId?: string | null; createdAt?: string;
 }
 export interface BookingStats { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[] }
 export interface BookingRepo { stats(days: number): Promise<BookingStats>; listAll(state: string | undefined, limit: number): Promise<BookingRecord[]>; listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
@@ -38,14 +38,14 @@ export class MemoryBookingRepo implements BookingRepo {
 export class BookingsService {
   readonly published: BookingEvent[] = []; // stand-in for the transactional outbox
   onConfirmed?: (providerId: string | null) => Promise<void>;
-  constructor(readonly repo: BookingRepo) {}
+  constructor(readonly repo: BookingRepo, private now: () => number = Date.now) {}
 
   async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"]; lat?: number; lng?: number; categoryId?: string }) {
     if (input.mode === "catalogue" && !input.providerId) throw new UnprocessableEntityException("catalogue bookings need a providerId");
     const b: BookingRecord = {
       id: randomUUID(), customerId, providerId: input.providerId ?? null, mode: input.mode, state: "Requested",
       totalCentimes: input.totalCentimes, feeCentimes: platformFee(input.totalCentimes), paymentMethod: input.paymentMethod, version: 0, events: [],
-      lat: input.lat, lng: input.lng, categoryId: input.categoryId ?? null,
+      lat: input.lat, lng: input.lng, categoryId: input.categoryId ?? null, createdAt: new Date(this.now()).toISOString(),
     };
     await this.repo.insert(b);
     return b;

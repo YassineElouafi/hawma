@@ -16,7 +16,7 @@ export class PgBookingRepo implements BookingRepo {
     return {
       id: row.id, customerId: row.customerId, providerId: row.providerId, mode: row.mode as BookingRecord["mode"],
       state: row.state as BookingRecord["state"], totalCentimes: row.totalCentimes, feeCentimes: row.feeCentimes,
-      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events, lat: row.lat, lng: row.lng, categoryId: row.categoryId,
+      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events, lat: row.lat, lng: row.lng, categoryId: row.categoryId, createdAt: row.createdAt.toISOString(),
     };
   }
 
