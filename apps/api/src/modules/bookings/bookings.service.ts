@@ -38,6 +38,8 @@ export class MemoryBookingRepo implements BookingRepo {
 export class BookingsService {
   readonly published: BookingEvent[] = []; // stand-in for the transactional outbox
   onConfirmed?: (providerId: string | null) => Promise<void>;
+  /** Dev/memory mode only: the Postgres store delivers events through the outbox relay instead. */
+  afterEvent?: (b: BookingRecord, e: BookingEvent) => void;
   constructor(readonly repo: BookingRepo, private now: () => number = Date.now) {}
 
   async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"]; lat?: number; lng?: number; categoryId?: string }) {
@@ -70,7 +72,7 @@ export class BookingsService {
       b.state = state; b.events.push(event); b.version++;
       if (command === "accept" && !b.providerId) b.providerId = userId;
       await this.repo.save(b, expected);
-      this.published.push(event);
+      this.published.push(event); this.afterEvent?.(b, event);
       if (command === "confirm" && this.onConfirmed) await this.onConfirmed(b.providerId).catch(() => {});
       return { ...b, allowed: allowedCommands(b, actor) };
     } catch (e) {

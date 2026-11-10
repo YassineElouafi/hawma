@@ -35,7 +35,7 @@ import { AuthService, ConsoleOtpSender, MemoryOtpStore } from "./modules/auth/au
 import { BookingsController } from "./modules/bookings/bookings.controller";
 import { BookingsService, MemoryBookingRepo } from "./modules/bookings/bookings.service";
 
-const db = process.env.HAWMA_STORE === "postgres" && process.env.DATABASE_URL ? drizzle(postgres(process.env.DATABASE_URL, { max: Number(process.env.DB_POOL ?? 10) })) : undefined;
+export const db = process.env.HAWMA_STORE === "postgres" && process.env.DATABASE_URL ? drizzle(postgres(process.env.DATABASE_URL, { max: Number(process.env.DB_POOL ?? 10) })) : undefined;
 
 const memStats = new Map<string, { ratings: number[] }>();
 const otp = senderFromEnv(process.env);

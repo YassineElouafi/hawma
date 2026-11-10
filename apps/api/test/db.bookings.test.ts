@@ -52,3 +52,20 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     expect(n).toBe(1);
   });
 });
+
+(url ? describe : describe.skip)("outbox → realtime delivery (real Postgres)", () => {
+  it("a booking transition reaches both parties' channels through the relay exactly once", async () => {
+    const client = postgres(url!, { max: 3 }); const db2 = drizzle(client);
+    const { MemoryBus } = await import("../src/realtime/bus"); const { BusPublisher } = await import("../src/realtime/outbox-publisher");
+    const repo = new PgBookingRepo(db2); const svc = new BookingsService(repo); const bus = new MemoryBus();
+    const cust = randomUUID(), prov = randomUUID(); const got: { ch: string; type: string }[] = [];
+    for (const ch of [`user:${cust}`, `user:${prov}`]) await bus.subscribe(ch, (m) => got.push({ ch, type: (m as { type: string }).type }));
+    const b = await svc.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 1000, paymentMethod: "cash" });
+    await svc.command(b.id, "accept", prov);
+    const pub = new BusPublisher(bus, async () => [cust, prov]);
+    while ((await relayOutbox(db2, pub)) > 0);
+    expect(got.filter((g) => g.type === "booking.accepted").map((g) => g.ch).sort()).toEqual([`user:${cust}`, `user:${prov}`].sort());
+    await relayOutbox(db2, pub); expect(got.filter((g) => g.type === "booking.accepted")).toHaveLength(2);   // not re-delivered
+    await client.end();
+  });
+});

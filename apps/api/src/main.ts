@@ -6,6 +6,9 @@ import { ZodFilter } from "./zod.filter";
 import { attachGateway } from "./realtime/gateway";
 import { MemoryBus, RedisBus } from "./realtime/bus";
 import { AuthService } from "./modules/auth/auth.service";
+import { BusPublisher } from "./realtime/outbox-publisher";
+import { relayOutbox } from "./modules/bookings/outbox.relay";
+import { db } from "./app.module";
 import { DispatchService } from "./modules/dispatch/dispatch.service";
 import { BookingsService, bookingAccess } from "./modules/bookings/bookings.service";
 import Redis from "ioredis";
@@ -38,6 +41,16 @@ export function startRealtime(app: NestFastifyApplication) {
   });
 }
 
+/** Delivers booking events to connected clients: Postgres outbox relay (durable, multi-instance safe) or a direct hook in memory mode. */
+export function startEventDelivery(app: NestFastifyApplication) {
+  const bus = app.get("BUS") as import("./realtime/bus").Bus; const bookings = app.get(BookingsService);
+  const parties = async (id: string) => { const b = await bookings.repo.get(id); return [b?.customerId, b?.providerId].filter((x): x is string => !!x); };
+  if (!db) { bookings.afterEvent = (b, e) => { const msg = { bookingId: b.id, ...e }; void bus.publish(`booking:${b.id}`, msg); for (const u of [b.customerId, b.providerId]) if (u) void bus.publish(`user:${u}`, msg); }; return () => {}; }
+  const pub = new BusPublisher(bus, parties); let busy = false;
+  const pgdb = db; const timer = setInterval(async () => { if (busy) return; busy = true; try { while ((await relayOutbox(pgdb, pub)) > 0); } catch (e) { console.warn("outbox relay failed", (e as Error).message); } finally { busy = false; } }, 1000);
+  return () => clearInterval(timer);
+}
+
 /** Optional first-run admin: set BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD (>=12 chars), start once, then REMOVE the variables. Idempotent. */
 async function bootstrapAdmin() {
   const { BOOTSTRAP_ADMIN_EMAIL: email, BOOTSTRAP_ADMIN_PASSWORD: pw, DATABASE_URL: url } = process.env;
@@ -50,6 +63,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
   const app = await createApp();
   await app.listen(Number(process.env.PORT ?? 3001), "0.0.0.0");
   startRealtime(app);
+  startEventDelivery(app);
   const dispatch = app.get(DispatchService); setInterval(() => dispatch.tick().catch((e) => console.warn("dispatch tick failed", e)), 3000);
   await bootstrapAdmin();
   console.log(`hawma-api listening on ${process.env.PORT ?? 3001}`);
