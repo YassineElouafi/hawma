@@ -118,6 +118,29 @@ const LargeTitle = ({ top, title, sub, right }: { top: number; title: string; su
 );
 
 /* ---------- home ---------- */
+function UrgentBanner({ where }: { where: { lat: number; lng: number } }) {
+  const { t } = useT(); const [open, setOpen] = useState(false); const [cat, setCat] = useState("errands"); const [price, setPrice] = useState("30"); const [busy, setBusy] = useState(false);
+  const go = async () => {
+    setBusy(true);
+    try { await post("/v1/dispatch-requests", { lat: where.lat, lng: where.lng, categoryId: cat, totalCentimes: Math.round((Number(price) || 0) * 100), paymentMethod: "cash" }); setOpen(false); Alert.alert(t("urgentSent")); }
+    catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setBusy(false); }
+  };
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} style={({ pressed }) => ({ marginTop: 14, borderRadius: R.lg, backgroundColor: C.emerald, padding: 16, flexDirection: "row", alignItems: "center", gap: 12, opacity: pressed ? 0.9 : 1 })}>
+        <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: C.saffron, alignItems: "center", justifyContent: "center" }}><Text style={{ fontSize: 24 }}>⚡</Text></View>
+        <View style={{ flex: 1 }}><Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>{t("urgent")}</Text><Text style={{ color: "#ffffffb0", marginTop: 2, fontSize: 12.5 }}>{t("urgentHint")}</Text></View><Text style={{ color: C.saffron, fontSize: 22 }}>›</Text>
+      </Pressable>
+      <Sheet visible={open} onClose={() => setOpen(false)}>
+        <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink }}>⚡ {t("urgent")}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>{CATS.filter(([id]) => ["errands", "rides", "diy", "pets"].includes(id)).map(([id, e]) => <Pressable key={id} onPress={() => setCat(id)} style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: R.pill, backgroundColor: cat === id ? C.emerald : C.card, borderWidth: 1, borderColor: cat === id ? C.emerald : C.border }}><Text style={{ fontWeight: "700", color: cat === id ? "#fff" : C.ink }}>{e} {t(`c_${id}` as Key)}</Text></Pressable>)}</ScrollView>
+        <Field label={t("priceMad")} value={price} onChangeText={setPrice} keyboardType="numeric" />
+        <Button label={t("requestNow")} icon="⚡" onPress={go} busy={busy} style={{ marginTop: 18 }} />
+      </Sheet>
+    </>
+  );
+}
+
 function Home({ where, located, insetTop }: { where: { lat: number; lng: number }; located: boolean; insetTop: number }) {
   const { t } = useT();
   const [q, setQ] = useState(""); const [cat, setCat] = useState<string>("all"); const [hits, setHits] = useState<Hit[] | null>(null); const [busy, setBusy] = useState(false); const [sel, setSel] = useState<Hit | null>(null);
@@ -137,6 +160,7 @@ function Home({ where, located, insetTop }: { where: { lat: number; lng: number 
             <Text style={{ fontSize: 16 }}>🔍</Text><TextInput style={{ flex: 1, paddingVertical: 13, paddingHorizontal: 10, fontSize: 15.5, color: C.ink }} value={q} onChangeText={setQ} placeholder={t("search")} placeholderTextColor={C.faint} />
             {!!q && <Pressable onPress={() => setQ("")}><Text style={{ color: C.faint, fontSize: 16 }}>✕</Text></Pressable>}
           </View>
+          <UrgentBanner where={where} />
           <SectionTitle title={t("categories")} />
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 }}>
             {[["all", "✦"], ...CATS].map(([id, e]) => {

@@ -70,6 +70,40 @@ function DocUploader({ verificationId, onChange }: { verificationId: string; onC
   );
 }
 
+interface PendingOffer { id: string; bookingId: string; expiresAt: string }
+/** While online: heartbeat position every 15 s (server treats 45 s of silence as offline) and watch for dispatch offers. */
+function useDispatch(online: boolean, verified: boolean) {
+  const [offers, setOffers] = useState<PendingOffer[]>([]);
+  useEffect(() => {
+    if (!verified) return; let dead = false;
+    const beat = async () => {
+      if (!online) { api("/v1/provider/presence", { method: "POST", body: JSON.stringify({ online: false }) }).catch(() => {}); return; }
+      try { const perm = await Location.requestForegroundPermissionsAsync(); let lat = DEFAULT_CENTER.lat, lng = DEFAULT_CENTER.lng;
+        if (perm.granted) { const pos = await Location.getCurrentPositionAsync({}); lat = pos.coords.latitude; lng = pos.coords.longitude; }
+        await post("/v1/provider/presence", { online: true, lat, lng }); } catch {}
+    };
+    beat(); const hb = online ? setInterval(beat, 15000) : undefined;
+    const poll = online ? setInterval(async () => { try { const o = await api("/v1/dispatch-offers/pending"); if (!dead) setOffers(o); } catch {} }, 3000) : undefined;
+    if (!online) setOffers([]);
+    return () => { dead = true; if (hb) clearInterval(hb); if (poll) clearInterval(poll); };
+  }, [online, verified]);
+  return [offers, setOffers] as const;
+}
+
+function OfferCard({ o, onDone }: { o: PendingOffer; onDone: () => void }) {
+  const { t } = useT(); const [left, setLeft] = useState(() => Math.max(0, Math.ceil((new Date(o.expiresAt).getTime() - Date.now()) / 1000))); const [busy, setBusy] = useState(false);
+  useEffect(() => { const i = setInterval(() => setLeft(Math.max(0, Math.ceil((new Date(o.expiresAt).getTime() - Date.now()) / 1000))), 500); return () => clearInterval(i); }, [o.expiresAt]);
+  const act = async (a: "accept" | "reject") => { setBusy(true); try { await post(`/v1/dispatch-offers/${o.id}/${a}`); } catch (e) { if (a === "accept") Alert.alert(t("offerGone")); } finally { setBusy(false); onDone(); } };
+  if (left <= 0) return null;
+  return (
+    <Card style={{ marginTop: 10, borderColor: C.saffron, borderWidth: 2, backgroundColor: C.saffronSoft }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}><Text style={{ fontWeight: "800", fontSize: 18, color: C.ink }}>⚡ {t("offerIncoming")}</Text><View style={{ backgroundColor: C.emerald, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 5 }}><Text style={{ color: "#fff", fontWeight: "800" }}>{left}{t("secShort")}</Text></View></View>
+      <View style={{ height: 6, borderRadius: 3, backgroundColor: C.border, marginTop: 12, overflow: "hidden" }}><View style={{ height: 6, width: `${Math.min(100, (left / 20) * 100)}%`, backgroundColor: C.emerald2 }} /></View>
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}><Button label={t("decline")} variant="outline" small style={{ flex: 1 }} busy={busy} onPress={() => act("reject")} /><Button label={t("accept")} small style={{ flex: 1 }} busy={busy} onPress={() => act("accept")} /></View>
+    </Card>
+  );
+}
+
 export function ProviderToday({ insetTop }: { insetTop: number }) {
   const { t } = useT(); const me = currentUserId();
   const [sum, setSum] = useState<Summary | null>(null); const [ver, setVer] = useState<Verification[] | null>(null); const [jobs, setJobs] = useState<Booking[] | null>(null);
@@ -81,10 +115,11 @@ export function ProviderToday({ insetTop }: { insetTop: number }) {
   useEffect(() => { load(); const i = setInterval(load, 15000); return () => clearInterval(i); }, [load]);
   const act = async (id: string, cmd: string) => { setActing(id); try { await post(`/v1/bookings/${id}/${cmd}`); await load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setActing(null); } };
   const active = (jobs ?? []).filter((j) => SHARING.includes(j.state)); const requests = (jobs ?? []).filter((j) => j.state === "Requested");
+  const verified = (sum?.status === "active" && sum.tier >= 1);
   useLocationSharing(active.map((j) => j.id), online);
+  const [offers, setOffers] = useDispatch(online, verified);
 
   const apply = async () => { try { await post("/v1/verifications", { tier: 1, documents: ["cin_front", "cin_back", "selfie"] }); await load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } };
-  const verified = (sum?.status === "active" && sum.tier >= 1);
   const latest = ver?.[0];
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 30 }} refreshControl={<RefreshControl refreshing={busy && !!sum} onRefresh={load} tintColor={C.emerald} />}>
@@ -104,6 +139,7 @@ export function ProviderToday({ insetTop }: { insetTop: number }) {
               <View style={{ flex: 1 }}><Text style={{ fontWeight: "800", fontSize: 17, color: C.ink }}>{online ? t("online") : t("offline")}</Text><Text style={{ color: C.mute, marginTop: 3, fontSize: 12.5 }}>{t("onlineHint")}</Text></View>
               <Switch value={online} onValueChange={setOnline} trackColor={{ true: C.emerald2, false: C.border }} thumbColor="#fff" />
             </Card>
+            {offers.map((o) => <OfferCard key={o.id} o={o} onDone={() => { setOffers((x) => x.filter((y) => y.id !== o.id)); load(); }} />)}
             <SectionTitle title={t("activeJob")} />
             {active.length === 0 ? <Card><Text style={{ color: C.mute }}>—</Text></Card> : active.map((j) => (
               <Card key={j.id} style={{ marginBottom: 10 }}>
