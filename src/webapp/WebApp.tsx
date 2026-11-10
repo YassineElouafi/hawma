@@ -98,7 +98,7 @@ function Explore() {
     <>
       <Title sub={tr("hello")}>{tr("find")}</Title>
       <div className="px-5"><div className="relative"><Search size={17} className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-ops-muted" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("search")} aria-label={tr("search")} className="h-12 w-full rounded-full border border-ops-border bg-ops-card ps-11 pe-4 outline-none transition focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" /></div></div>
-      <div className="mt-5 grid grid-cols-4 gap-2 px-5">
+      <div className="mt-5 grid grid-cols-3 gap-2.5 px-5">
         {[["all", "✦"], ...CATS].map(([id, e]) => <button key={id} onClick={() => setCat(id)} className={cn("flex flex-col items-center gap-1.5 rounded-2xl border py-3 text-[11.5px] font-semibold transition", cat === id ? "border-ops-accent bg-ops-accent text-ops-accent-fg shadow-md" : "border-ops-border bg-ops-card hover:bg-ops-hover")}><span className="text-2xl">{e}</span>{id === "all" ? tr("all") : tr("c_" + id)}</button>)}
       </div>
       <h2 className="px-5 pb-3 pt-7 text-xl font-bold">{tr("near")}</h2>
