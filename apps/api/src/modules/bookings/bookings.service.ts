@@ -6,6 +6,7 @@ import { platformFee } from "../../domain/money";
 export interface BookingRecord {
   id: string; customerId: string; providerId: string | null; mode: Mode; state: BookingState; totalCentimes: number; feeCentimes: number;
   paymentMethod: "cash" | "card" | "wallet"; version: number; events: BookingEvent[];
+  lat?: number; lng?: number; categoryId?: string | null;
 }
 export interface BookingStats { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[] }
 export interface BookingRepo { stats(days: number): Promise<BookingStats>; listAll(state: string | undefined, limit: number): Promise<BookingRecord[]>; listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
@@ -39,11 +40,12 @@ export class BookingsService {
   onConfirmed?: (providerId: string | null) => Promise<void>;
   constructor(readonly repo: BookingRepo) {}
 
-  async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"] }) {
+  async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"]; lat?: number; lng?: number; categoryId?: string }) {
     if (input.mode === "catalogue" && !input.providerId) throw new UnprocessableEntityException("catalogue bookings need a providerId");
     const b: BookingRecord = {
       id: randomUUID(), customerId, providerId: input.providerId ?? null, mode: input.mode, state: "Requested",
       totalCentimes: input.totalCentimes, feeCentimes: platformFee(input.totalCentimes), paymentMethod: input.paymentMethod, version: 0, events: [],
+      lat: input.lat, lng: input.lng, categoryId: input.categoryId ?? null,
     };
     await this.repo.insert(b);
     return b;
@@ -80,6 +82,12 @@ export class BookingsService {
   stats(days = 14) { return this.repo.stats(days); }
   async listAll(state: string | undefined, limit = 100) { return this.repo.listAll(state, limit); }
   async getAny(id: string) { const b = await this.repo.get(id); if (!b) throw new NotFoundException(); return b; }
+  /** System-initiated transition (dispatch expiry etc.): no participant check. */
+  async systemCommand(id: string, command: Command) {
+    const b = await this.repo.get(id); if (!b) throw new NotFoundException();
+    const { state, event } = transition(b, command, "system"); const expected = b.version;
+    b.state = state; b.events.push(event); b.version++; await this.repo.save(b, expected); this.published.push(event); return b;
+  }
   async list(userId: string, limit = 50) { return this.repo.listFor(userId, limit); }
 
   async get(id: string, userId: string) {

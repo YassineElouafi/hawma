@@ -1,4 +1,9 @@
 import { Module } from "@nestjs/common";
+import { DispatchController } from "./modules/dispatch/dispatch.controller";
+import { DispatchService, MemoryOfferRepo } from "./modules/dispatch/dispatch.service";
+import { PgOfferRepo, PgProviderPort } from "./modules/dispatch/pg-dispatch.repo";
+import { MemoryPresence, RedisPresence } from "./modules/dispatch/presence";
+import { MemoryBus, RedisBus } from "./realtime/bus";
 import { DocumentsController } from "./modules/documents/documents.controller";
 import { DocumentsService, MemoryDocRepo } from "./modules/documents/documents.service";
 import { PgDocRepo } from "./modules/documents/pg-documents.repo";
@@ -35,15 +40,36 @@ const db = process.env.HAWMA_STORE === "postgres" && process.env.DATABASE_URL ? 
 const memStats = new Map<string, { ratings: number[] }>();
 const otp = senderFromEnv(process.env);
 if (process.env.NODE_ENV === "production") console.log(`otp delivery: ${otp.kind.join(" -> ")}${process.env.OTP_DEBUG_RETURN_CODE === "true" ? " (PILOT: codes also returned in API responses)" : ""}`);
+type CatStats = { stats?: Map<string, { tier: number; status: string; rating: number; cancelRate: number }>; tiers?: Record<string, number> };
+type ProviderPort = import("./modules/dispatch/dispatch.service").ProviderPort;
+function memoryProviderPort(): ProviderPort {
+  const cat = (): CatStats => OVERRIDES.catalogueRepo as unknown as CatStats;
+  return {
+    async profile(id: string) { const st = cat().stats?.get(id); return st && { tier: st.tier, status: st.status, rating: st.rating, cancelRate: st.cancelRate, acceptance: 1 }; },
+    async busy(id: string): Promise<boolean> { const all = (await OVERRIDES.bookingRepoRef?.listAll(undefined, 1000)) ?? []; return all.some((b) => b.providerId === id && ["Accepted", "EnRoute", "Arrived", "InProgress"].includes(b.state)); },
+    async requiredTier(c: string | null | undefined): Promise<number> { return cat().tiers?.[c ?? ""] ?? 1; },
+  };
+}
+
 export const OVERRIDES = {
+  bus: new MemoryBus(), presence: new MemoryPresence(), offerRepo: new MemoryOfferRepo(),
+  providerPort: memoryProviderPort(),
+  bookingRepoRef: undefined as import("./modules/bookings/bookings.service").BookingRepo | undefined,
   reviewRepo: new MemoryReviewRepo(),
   // memory stand-in for the Postgres recompute: keeps the catalogue stats map in sync for tests/dev
   statsSink: { async refresh(providerId: string) { const r = OVERRIDES.reviewRepo.items.filter((x) => x.subjectId === providerId).map((x) => x.rating); memStats.set(providerId, { ratings: r }); const st = (OVERRIDES.catalogueRepo as unknown as { stats?: Map<string, { rating: number }> }).stats?.get(providerId); if (st) { st.rating = r.length ? r.reduce((a, b) => a + b, 0) / r.length : 0; } } }, otpSender: otp.sender as ConsoleOtpSender, catalogueRepo: db ? new PgCatalogueRepo(db) : new MemoryCatalogueRepo(), staffRepo: db ? new PgStaffRepo(db) : new MemoryStaffRepo(), auditRepo: db ? new PgAuditRepo(db) : new MemoryAuditRepo(), kycRepo: undefined as unknown as import("./modules/ops/ops.service").KycRepo };
 OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRepo as MemoryAuditRepo);
 
 @Module({
-  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController],
+  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController, DispatchController],
   providers: [
+    { provide: "BUS", useFactory: () => (process.env.REDIS_URL ? new RedisBus(new Redis(process.env.REDIS_URL), new Redis(process.env.REDIS_URL)) : OVERRIDES.bus) },
+    { provide: "PRESENCE", useFactory: () => (process.env.REDIS_URL && !process.env.VITEST ? new RedisPresence(new Redis(process.env.REDIS_URL)) : OVERRIDES.presence) },
+    { provide: "OFFER_REPO", useFactory: () => (db ? new PgOfferRepo(db) : OVERRIDES.offerRepo) },
+    { provide: "PROVIDER_PORT", useFactory: () => (db ? new PgProviderPort(db) : OVERRIDES.providerPort) },
+    { provide: "BOOKINGS", useFactory: (b: BookingsService) => b, inject: [BookingsService] },
+    { provide: "CLOCK", useValue: () => Date.now() },
+    DispatchService,
     { provide: "DOC_CRYPTO", useFactory: () => new DocCrypto(process.env.KYC_ENC_KEY) },
     { provide: "DOC_REPO", useFactory: () => (db ? new PgDocRepo(db) : new MemoryDocRepo((id) => { const v = (OVERRIDES.kycRepo as unknown as { items?: Map<string, { userId: string; status: string }> }).items?.get(id); return v && { userId: v.userId, status: v.status }; })) },
     DocumentsService,
@@ -56,7 +82,7 @@ OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRe
     { provide: StaffService, useFactory: () => new StaffService(OVERRIDES.staffRepo) },
     { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo, db ? () => seedDemo(db) : undefined) },
     { provide: AuthService, useFactory: () => new AuthService(process.env.REDIS_URL ? new RedisOtpStore(new Redis(process.env.REDIS_URL)) : new MemoryOtpStore(), OVERRIDES.otpSender, db ? new PgUserRepo(db) : undefined, db ? new PgSessionRepo(db) : undefined) },
-    { provide: BookingsService, useFactory: () => new BookingsService(db ? new PgBookingRepo(db) : new MemoryBookingRepo()) },
+    { provide: BookingsService, useFactory: () => { const repo = db ? new PgBookingRepo(db) : new MemoryBookingRepo(); OVERRIDES.bookingRepoRef = repo; return new BookingsService(repo); } },
   ],
 })
 export class AppModule {}

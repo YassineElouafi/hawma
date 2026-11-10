@@ -171,3 +171,21 @@ describe("reviews", () => {
     expect(list).toHaveLength(1); expect(list[0].comment).toBe("Très pro");
   });
 });
+
+describe("dispatch over HTTP", () => {
+  it("provider goes online, customer requests, provider accepts the offer", async () => {
+    const c = await login("0651515151"), p = await login("0652525252"), q = await login("0653535353");
+    OVERRIDES.catalogueRepo.stats.set(p.userId, { rating: 4.7, jobs: 5, tier: 1, cancelRate: 0, responseMin: 5, status: "active" });
+    const near = { lat: 33.5883, lng: -7.635 };
+    expect((await post("/v1/provider/presence", { online: true, ...near }, q.accessToken)).statusCode).toBe(403);   // not a provider
+    expect((await post("/v1/provider/presence", { online: true, ...near }, p.accessToken)).statusCode).toBe(200);
+    const b = await post("/v1/dispatch-requests", { ...near, categoryId: "errands", totalCentimes: 3500 }, c.accessToken); expect(b.statusCode).toBe(201);
+    const pending = (await app.inject({ url: "/v1/dispatch-offers/pending", headers: { authorization: `Bearer ${p.accessToken}` } })).json();
+    expect(pending).toHaveLength(1); expect(pending[0].bookingId).toBe(b.json().id);
+    expect((await post(`/v1/dispatch-offers/${pending[0].id}/accept`, undefined, c.accessToken)).statusCode).toBe(403);   // not the offered provider
+    const ok = await post(`/v1/dispatch-offers/${pending[0].id}/accept`, undefined, p.accessToken);
+    expect(ok.statusCode).toBe(201); expect(ok.json()).toMatchObject({ state: "Accepted", providerId: p.userId });
+    expect((await post("/v1/provider/presence", { online: false }, p.accessToken)).json()).toEqual({ online: false });
+    expect((await post("/v1/dispatch-requests", { lat: 1, lng: 1, categoryId: "errands", totalCentimes: 1 }, c.accessToken)).statusCode).toBe(400); // outside Morocco
+  });
+});

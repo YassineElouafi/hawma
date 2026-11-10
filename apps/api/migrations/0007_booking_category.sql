@@ -1,0 +1,1 @@
+ALTER TABLE "booking"."booking" ADD COLUMN "category_id" text;

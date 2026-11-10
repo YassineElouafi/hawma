@@ -50,6 +50,20 @@
       "when": 1794234327564,
       "tag": "0006_kyc_document",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794344389918,
+      "tag": "0007_booking_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794344503880,
+      "tag": "0008_one_open_offer",
+      "breakpoints": true
     }
   ]
 }

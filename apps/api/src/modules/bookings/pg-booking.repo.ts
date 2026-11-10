@@ -16,7 +16,7 @@ export class PgBookingRepo implements BookingRepo {
     return {
       id: row.id, customerId: row.customerId, providerId: row.providerId, mode: row.mode as BookingRecord["mode"],
       state: row.state as BookingRecord["state"], totalCentimes: row.totalCentimes, feeCentimes: row.feeCentimes,
-      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events,
+      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events, lat: row.lat, lng: row.lng, categoryId: row.categoryId,
     };
   }
 
@@ -24,7 +24,7 @@ export class PgBookingRepo implements BookingRepo {
     await this.db.insert(s.bookings).values({
       id: b.id, customerId: b.customerId, providerId: b.providerId, mode: b.mode, state: b.state,
       totalCentimes: b.totalCentimes, feeCentimes: b.feeCentimes, paymentMethod: b.paymentMethod, version: b.version,
-      lat: 0, lng: 0,
+      lat: b.lat ?? 0, lng: b.lng ?? 0, categoryId: b.categoryId ?? null,
     });
   }
 
