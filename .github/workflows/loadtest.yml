@@ -1,0 +1,41 @@
+name: Dispatch load test
+on: workflow_dispatch
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: hawma, POSTGRES_DB: hawma }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:hawma@localhost:5432/hawma
+      REDIS_URL: redis://localhost:6379
+      HAWMA_STORE: postgres
+      OTP_DEBUG_RETURN_CODE: "true"
+      OTP_IP_LIMIT: "100000"
+      PORT: "3999"
+      STAFF_EMAIL: load@hawma.ma
+      STAFF_PASSWORD: load-test-password-123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/api/package-lock.json }
+      - run: npm ci
+      - run: npx tsx src/db/migrate.ts
+      - run: STAFF_PASSWORD="$STAFF_PASSWORD" npx tsx src/db/staff-create.ts "$STAFF_EMAIL" admin
+      - name: Start API
+        run: |
+          npx tsx src/main.ts > api.log 2>&1 &
+          for i in $(seq 1 40); do curl -sf localhost:3999/healthz && break; sleep 1; done
+      - name: Run load test
+        run: node loadtest/dispatch-load.mjs
+      - name: API log tail
+        if: always()
+        run: tail -n 40 api.log
