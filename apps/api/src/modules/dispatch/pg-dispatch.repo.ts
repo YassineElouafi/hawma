@@ -1,8 +1,7 @@
 import { and, eq, lte } from "drizzle-orm";
-import { ConflictException } from "@nestjs/common";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as s from "../../db/schema";
-import type { Offer, OfferRepo, ProviderPort } from "./dispatch.service";
+import { OfferConflict, type Offer, type OfferRepo, type ProviderPort } from "./dispatch.service";
 
 const toO = (r: typeof s.dispatchOffers.$inferSelect): Offer => ({ id: r.id, bookingId: r.bookingId, providerId: r.providerId, status: r.status as Offer["status"], expiresAt: r.expiresAt.toISOString(), round: r.round });
 
@@ -10,7 +9,10 @@ export class PgOfferRepo implements OfferRepo {
   constructor(private db: PostgresJsDatabase) {}
   async create(o: Omit<Offer, "id">) {
     try { const [r] = await this.db.insert(s.dispatchOffers).values({ bookingId: o.bookingId, providerId: o.providerId, status: o.status, expiresAt: new Date(o.expiresAt), round: o.round }).returning(); return toO(r); }
-    catch (e) { const c = e as { code?: string; cause?: { code?: string } }; if (c.code === "23505" || c.cause?.code === "23505") throw new ConflictException("an offer is already open for this booking"); throw e; }
+    catch (e) {
+      const c = e as { code?: string; constraint_name?: string; cause?: { code?: string; constraint_name?: string } }; const code = c.code ?? c.cause?.code; const name = c.constraint_name ?? c.cause?.constraint_name ?? "";
+      if (code === "23505") throw new OfferConflict(name.includes("provider") ? "provider" : "booking"); throw e;
+    }
   }
   async get(id: string) { const [r] = await this.db.select().from(s.dispatchOffers).where(eq(s.dispatchOffers.id, id)); return r && toO(r); }
   async transition(id: string, to: Offer["status"]) { const r = await this.db.update(s.dispatchOffers).set({ status: to }).where(and(eq(s.dispatchOffers.id, id), eq(s.dispatchOffers.status, "offered"))).returning({ id: s.dispatchOffers.id }); return r.length === 1; }

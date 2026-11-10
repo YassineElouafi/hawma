@@ -91,3 +91,24 @@ describe("dispatch service", () => {
     expect(await s.svc.pending("me")).toHaveLength(0); expect(await s.svc.pending("other")).toHaveLength(1); expect(b.customerId).toBe("me");
   });
 });
+
+describe("dispatch fairness under load", () => {
+  it("a provider holding an open offer is not offered a second job (no double booking)", async () => {
+    const s = setup(); await s.provider("solo", 200);
+    const b1 = await s.request("c1"); expect(await s.svc.pending("solo")).toHaveLength(1);
+    const b2 = await s.request("c2");                                            // only provider is busy with an open offer
+    expect((await s.bookings.getAny(b2.id)).state).toBe("Expired");
+    expect((await s.bookings.getAny(b1.id)).state).toBe("Requested");
+    const [o] = await s.svc.pending("solo"); await s.svc.accept("solo", o.id);
+    expect((await s.bookings.getAny(b1.id)).providerId).toBe("solo");
+  });
+  it("many requests and many providers: every provider ends up with at most one job", async () => {
+    const s = setup(); for (let i = 0; i < 20; i++) await s.provider(`p${i}`, 100 + i * 50);
+    const bs = await Promise.all(Array.from({ length: 30 }, (_, i) => s.request(`c${i}`)));
+    for (let r = 0; r < 5; r++) for (let i = 0; i < 20; i++) { for (const o of await s.svc.pending(`p${i}`)) await s.svc.accept(`p${i}`, o.id).catch(() => {}); }
+    const all = await Promise.all(bs.map((b) => s.bookings.getAny(b.id)));
+    const per = new Map<string, number>(); for (const b of all) if (b.providerId) per.set(b.providerId, (per.get(b.providerId) ?? 0) + 1);
+    expect(Math.max(0, ...per.values())).toBeLessThanOrEqual(1);
+    expect(all.filter((b) => b.state === "Accepted").length).toBeLessThanOrEqual(20);
+  });
+});

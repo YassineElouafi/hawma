@@ -5,6 +5,8 @@ import type { Bus } from "../../realtime/bus";
 import type { PresenceStore } from "./presence";
 
 export const OFFER_TTL_MS = 20_000;
+/** Thrown by OfferRepo.create when the booking already has an open offer, or the provider already holds one. */
+export class OfferConflict extends Error { constructor(public kind: "booking" | "provider") { super(`offer conflict: ${kind}`); } }
 export const START_RADIUS_M = 3000;
 
 export interface Offer { id: string; bookingId: string; providerId: string; status: "offered" | "accepted" | "rejected" | "expired"; expiresAt: string; round: number }
@@ -19,7 +21,12 @@ export interface OfferRepo {
 }
 export class MemoryOfferRepo implements OfferRepo {
   items = new Map<string, Offer>();
-  async create(o: Omit<Offer, "id">) { const v = { ...o, id: crypto.randomUUID() }; this.items.set(v.id, v); return { ...v }; }
+  async create(o: Omit<Offer, "id">) {
+    const open = [...this.items.values()].filter((x) => x.status === "offered");
+    if (open.some((x) => x.bookingId === o.bookingId)) throw new OfferConflict("booking");
+    if (open.some((x) => x.providerId === o.providerId)) throw new OfferConflict("provider");
+    const v = { ...o, id: crypto.randomUUID() }; this.items.set(v.id, v); return { ...v };
+  }
   async get(id: string) { const v = this.items.get(id); return v && { ...v }; }
   async transition(id: string, to: Offer["status"]) { const v = this.items.get(id); if (!v || v.status !== "offered") return false; v.status = to; return true; }
   async forBooking(b: string) { return [...this.items.values()].filter((o) => o.bookingId === b).map((o) => ({ ...o })); }
@@ -61,11 +68,15 @@ export class DispatchService {
       for (const n of near) {
         if (triedIds.has(n.id) || n.id === b.customerId) continue;
         const p = await this.providers.profile(n.id); if (!p || p.status !== "active") continue;
-        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: await this.providers.busy(n.id), blocked: false, cashOwed: 0 });
+        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: (await this.providers.busy(n.id)) || (await this.offers.pendingFor(n.id)).length > 0, blocked: false, cashOwed: 0 });
       }
-      const best = rank(cands, { requiredTier, radiusM: radius, cashOwedLimit: 30_000 })[0];
-      if (best) {
-        let offer: Offer; try { offer = await this.offers.create({ bookingId, providerId: best.id, status: "offered", expiresAt: new Date(this.now() + OFFER_TTL_MS).toISOString(), round: tried.length }); } catch (e) { if (e instanceof ConflictException) return null; throw e; }
+      for (const best of rank(cands, { requiredTier, radiusM: radius, cashOwedLimit: 30_000 })) {
+        let offer: Offer;
+        try { offer = await this.offers.create({ bookingId, providerId: best.id, status: "offered", expiresAt: new Date(this.now() + OFFER_TTL_MS).toISOString(), round: tried.length }); }
+        catch (e) {
+          if (e instanceof OfferConflict) { if (e.kind === "booking") return (await this.offers.forBooking(bookingId)).find((o) => o.status === "offered") ?? null; continue; } // provider got another job meanwhile: next candidate
+          throw e;
+        }
         await this.bus.publish(`user:${best.id}`, { type: "dispatch.offer", offerId: offer.id, bookingId, expiresAt: offer.expiresAt, totalCentimes: b.totalCentimes, categoryId: b.categoryId, distanceM: Math.round(best.distanceM) });
         return offer;
       }

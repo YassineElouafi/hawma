@@ -43,3 +43,22 @@ const url = process.env.DATABASE_URL; const C = { lat: 33.5883, lng: -7.635 };
     await expect(svc.request(crypto.randomUUID(), { ...C, categoryId: "nope", totalCentimes: 1, paymentMethod: "cash" })).rejects.toThrow(/unknown category/);
   });
 });
+
+(url ? describe : describe.skip)("dispatch under concurrency on real Postgres", () => {
+  it("30 simultaneous requests, 10 providers: no provider ever holds two open offers or two jobs", async () => {
+    const client = postgres(url!, { max: 12 }); const db = drizzle(client);
+    const presence = new MemoryPresence(); const bookings = new BookingsService(new PgBookingRepo(db));
+    const svc = new DispatchService(new PgOfferRepo(db), presence, new MemoryBus(), new PgProviderPort(db), bookings, () => Date.now());
+    const ids: string[] = [];
+    for (let i = 0; i < 10; i++) { const [u] = await db.insert(s.users).values({ phone: `+2126${Math.floor(Math.random() * 1e8).toString().padStart(8, "0")}` }).returning(); await db.insert(s.providers).values({ userId: u.id, kycTier: 1, status: "active", ratingAvg: 4.5 }); ids.push(u.id); await presence.heartbeat(u.id, C.lat + i * 0.0005, C.lng); }
+    const reqs = await Promise.all(Array.from({ length: 30 }, () => svc.request(crypto.randomUUID(), { lat: C.lat, lng: C.lng, categoryId: "errands", totalCentimes: 2500, paymentMethod: "cash" })));
+    const open = await client`select provider_id, count(*)::int n from booking.dispatch_offer where provider_id = any(${ids}) and status = 'offered' group by provider_id`;
+    expect(Math.max(0, ...open.map((r) => r.n))).toBeLessThanOrEqual(1);
+    for (let round = 0; round < 4; round++) await Promise.all(ids.map(async (id) => { for (const o of await svc.pending(id)) await svc.accept(id, o.id).catch(() => {}); }));
+    const jobs = await client`select provider_id, count(*)::int n from booking.booking where id = any(${reqs.map((r) => r.id)}) and provider_id is not null group by provider_id`;
+    expect(Math.max(0, ...jobs.map((r) => r.n))).toBeLessThanOrEqual(1);
+    const states = await client`select state, count(*)::int n from booking.booking where id = any(${reqs.map((r) => r.id)}) group by state`;
+    expect(states.reduce((a, r) => a + r.n, 0)).toBe(30);
+    await client.end();
+  });
+});
