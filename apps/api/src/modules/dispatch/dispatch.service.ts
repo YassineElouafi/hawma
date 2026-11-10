@@ -17,6 +17,7 @@ export interface OfferRepo {
   transition(id: string, to: Offer["status"]): Promise<boolean>;
   forBooking(bookingId: string): Promise<Offer[]>;
   pendingFor(providerId: string): Promise<Offer[]>;
+  openProviderIds?(ids: string[]): Promise<Set<string>>;
   expiredOpen(nowIso: string): Promise<Offer[]>;
 }
 export class MemoryOfferRepo implements OfferRepo {
@@ -31,11 +32,12 @@ export class MemoryOfferRepo implements OfferRepo {
   async transition(id: string, to: Offer["status"]) { const v = this.items.get(id); if (!v || v.status !== "offered") return false; v.status = to; return true; }
   async forBooking(b: string) { return [...this.items.values()].filter((o) => o.bookingId === b).map((o) => ({ ...o })); }
   async pendingFor(p: string) { return [...this.items.values()].filter((o) => o.providerId === p && o.status === "offered").map((o) => ({ ...o })); }
+  async openProviderIds(ids: string[]) { return new Set([...this.items.values()].filter((o) => o.status === "offered" && ids.includes(o.providerId)).map((o) => o.providerId)); }
   async expiredOpen(now: string) { return [...this.items.values()].filter((o) => o.status === "offered" && o.expiresAt <= now).map((o) => ({ ...o })); }
 }
 
 /** Facts about a provider needed to decide eligibility (read from the catalogue/identity read model). */
-export interface ProviderPort { profile(id: string): Promise<{ tier: number; status: string; rating: number; cancelRate: number; acceptance: number } | undefined>; busy(id: string): Promise<boolean>; requiredTier(categoryId: string | null | undefined): Promise<number> }
+export interface ProviderPort { profiles?(ids: string[]): Promise<Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>>; busySet?(ids: string[]): Promise<Set<string>>; profile(id: string): Promise<{ tier: number; status: string; rating: number; cancelRate: number; acceptance: number } | undefined>; busy(id: string): Promise<boolean>; requiredTier(categoryId: string | null | undefined): Promise<number> }
 
 @Injectable()
 export class DispatchService {
@@ -64,11 +66,14 @@ export class DispatchService {
     let radius = START_RADIUS_M, attempt = 0;
     for (;;) {
       const near = await this.presence.nearby(b.lat ?? 0, b.lng ?? 0, radius);
+      const ids = near.map((n) => n.id).filter((id) => !triedIds.has(id) && id !== b.customerId);
+      const profs = this.providers.profiles ? await this.providers.profiles(ids) : new Map(await Promise.all(ids.map(async (id) => [id, await this.providers.profile(id)] as const)).then((xs) => xs.filter((x): x is [string, NonNullable<typeof x[1]>] => !!x[1])));
+      const busy = this.providers.busySet ? await this.providers.busySet(ids) : new Set((await Promise.all(ids.map(async (id) => ((await this.providers.busy(id)) ? id : null)))).filter((x): x is string => !!x));
+      const holding = this.offers.openProviderIds ? await this.offers.openProviderIds(ids) : new Set((await Promise.all(ids.map(async (id) => ((await this.offers.pendingFor(id)).length ? id : null)))).filter((x): x is string => !!x));
       const cands: Candidate[] = [];
       for (const n of near) {
-        if (triedIds.has(n.id) || n.id === b.customerId) continue;
-        const p = await this.providers.profile(n.id); if (!p || p.status !== "active") continue;
-        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: (await this.providers.busy(n.id)) || (await this.offers.pendingFor(n.id)).length > 0, blocked: false, cashOwed: 0 });
+        const p = profs.get(n.id); if (!p || p.status !== "active" || !ids.includes(n.id)) continue;
+        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: busy.has(n.id) || holding.has(n.id), blocked: false, cashOwed: 0 });
       }
       for (const best of rank(cands, { requiredTier, radiusM: radius, cashOwedLimit: 30_000 })) {
         let offer: Offer;

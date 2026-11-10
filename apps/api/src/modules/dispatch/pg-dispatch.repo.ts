@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as s from "../../db/schema";
 import { OfferConflict, type Offer, type OfferRepo, type ProviderPort } from "./dispatch.service";
@@ -17,6 +17,7 @@ export class PgOfferRepo implements OfferRepo {
   async get(id: string) { const [r] = await this.db.select().from(s.dispatchOffers).where(eq(s.dispatchOffers.id, id)); return r && toO(r); }
   async transition(id: string, to: Offer["status"]) { const r = await this.db.update(s.dispatchOffers).set({ status: to }).where(and(eq(s.dispatchOffers.id, id), eq(s.dispatchOffers.status, "offered"))).returning({ id: s.dispatchOffers.id }); return r.length === 1; }
   async forBooking(b: string) { return (await this.db.select().from(s.dispatchOffers).where(eq(s.dispatchOffers.bookingId, b)).orderBy(s.dispatchOffers.createdAt)).map(toO); }
+  async openProviderIds(ids: string[]) { if (!ids.length) return new Set<string>(); return new Set((await this.db.select({ p: s.dispatchOffers.providerId }).from(s.dispatchOffers).where(and(eq(s.dispatchOffers.status, "offered"), inArray(s.dispatchOffers.providerId, ids)))).map((r) => r.p)); }
   async pendingFor(p: string) { return (await this.db.select().from(s.dispatchOffers).where(and(eq(s.dispatchOffers.providerId, p), eq(s.dispatchOffers.status, "offered")))).map(toO); }
   async expiredOpen(now: string) { return (await this.db.select().from(s.dispatchOffers).where(and(eq(s.dispatchOffers.status, "offered"), lte(s.dispatchOffers.expiresAt, new Date(now))))).map(toO); }
 }
@@ -24,6 +25,8 @@ export class PgOfferRepo implements OfferRepo {
 export class PgProviderPort implements ProviderPort {
   constructor(private db: PostgresJsDatabase) {}
   async profile(id: string) { const [r] = await this.db.select().from(s.providers).where(eq(s.providers.userId, id)); return r && { tier: r.kycTier, status: r.status, rating: r.ratingAvg, cancelRate: r.cancelRate, acceptance: r.acceptance }; }
-  async busy(id: string) { const r = await this.db.select({ id: s.bookings.id }).from(s.bookings).where(and(eq(s.bookings.providerId, id))).limit(50); return (await Promise.all(r.map(async (x) => { const [b] = await this.db.select({ st: s.bookings.state }).from(s.bookings).where(eq(s.bookings.id, x.id)); return ["Accepted", "EnRoute", "Arrived", "InProgress"].includes(b.st); }))).some(Boolean); }
+  async profiles(ids: string[]) { const m = new Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>(); if (!ids.length) return m; for (const r of await this.db.select().from(s.providers).where(inArray(s.providers.userId, ids))) m.set(r.userId, { tier: r.kycTier, status: r.status, rating: r.ratingAvg, cancelRate: r.cancelRate, acceptance: r.acceptance }); return m; }
+  async busySet(ids: string[]) { if (!ids.length) return new Set<string>(); return new Set((await this.db.selectDistinct({ p: s.bookings.providerId }).from(s.bookings).where(and(inArray(s.bookings.providerId, ids), inArray(s.bookings.state, ["Accepted", "EnRoute", "Arrived", "InProgress"])))).map((r) => r.p as string)); }
+  async busy(id: string) { return (await this.busySet([id])).has(id); }
   async requiredTier(c: string | null | undefined) { if (!c) return 1; const [r] = await this.db.select({ t: s.categories.requiredTier }).from(s.categories).where(eq(s.categories.id, c)); return r?.t as number; }
 }
