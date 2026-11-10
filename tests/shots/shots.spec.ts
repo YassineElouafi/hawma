@@ -27,7 +27,7 @@ test("web app flow against a mocked API", async ({ page }, info) => {
   await page.route("**/api/v1/auth/otp/request", (r) => r.fulfill({ json: { sent: true, expiresInS: 300, devCode: "123456" } }));
   await page.route("**/api/v1/auth/otp/verify", (r) => r.request().postDataJSON().code === "123456" ? r.fulfill({ json: { userId: "u1", accessToken: "a", refreshToken: "r".repeat(30) } }) : r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "wrong code" } }));
   await page.route("**/api/v1/search**", (r) => r.fulfill({ json: hits }));
-  await page.route("**/api/v1/bookings", (r) => { if (r.request().method() === "POST") { bookings = [{ id: "b1111111-0000", state: "Requested", providerId: "p1", customerId: "u1", totalCentimes: 12000, paymentMethod: "cash" }]; return r.fulfill({ status: 201, json: bookings[0] }); } return r.fulfill({ json: bookings }); });
+  await page.route("**/api/v1/bookings", (r) => { if (r.request().method() === "POST") { bookings = [{ id: "b1111111-0000", state: "Requested", providerId: "p1", customerId: "u1", totalCentimes: 12000, paymentMethod: "cash" }, { id: "b2222222-0000", state: "Requested", mode: "dispatch", providerId: null, customerId: "u1", totalCentimes: 3500, paymentMethod: "cash", lat: 33.5883, lng: -7.635 }]; return r.fulfill({ status: 201, json: bookings[0] }); } return r.fulfill({ json: bookings }); });
   await page.route("**/api/v1/me", (r) => r.fulfill({ json: { id: "u1", phone: "+212611223344" } }));
 
   await page.goto("/app");
@@ -48,8 +48,13 @@ test("web app flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByText("Demande envoyée")).toBeVisible();
   await page.getByRole("button", { name: "Réservations" }).click();
   await expect(page.getByText("Aucune réservation en cours")).toHaveCount(0);
-  await expect(page.getByText("En attente")).toBeVisible();
+  await expect(page.getByText("En attente").first()).toBeVisible();
   await page.screenshot({ path: `screenshots/${info.project.name}-app-5-bookings.png` });
+  await page.getByText("#b2222222").click();
+  await expect(page.getByText("On cherche ton prestataire…")).toBeVisible();
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `screenshots/${info.project.name}-app-5b-searching.png` });
+  await page.getByRole("button", { name: "Retour" }).click();
   await page.getByRole("button", { name: "Profil" }).click();
   await expect(page.getByText("+212611223344")).toBeVisible();
   await page.getByRole("button", { name: "العربية" }).click();
