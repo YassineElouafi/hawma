@@ -24,6 +24,7 @@ Hawma is a **three-sided, on-demand local-services marketplace for Morocco**:
 | 08 | [Infrastructure & DevOps](08-infra-devops) | Environments, CI/CD, observability, scaling path, cost envelope |
 | 09 | [Security, trust & compliance](09-security-trust-compliance) | Threat model, KYC, fraud, Moroccan law 09-08 / CNDP |
 | 10 | [Roadmap, ADRs & open questions](10-roadmap-adrs) | Decisions with rationale, risks, what I need from you |
+| 11 | [Implementation status](11-implementation-status) | What is actually built and running, with as-built diagrams |
 
 ## Architecture in one picture
 
