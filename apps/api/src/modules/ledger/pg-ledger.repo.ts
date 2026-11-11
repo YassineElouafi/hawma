@@ -21,7 +21,7 @@ export class PgLedgerRepo implements LedgerRepo {
   }
   async balances(account: Account, ids: string[]) {
     const m = new Map<string, number>(); if (!ids.length) return m;
-    const r = await this.db.execute<{ o: string; s: string }>(sql`select owner_id::text o, sum(amount_centimes)::bigint s from money.ledger_entry where account = ${account} and owner_id = any(${ids}::uuid[]) group by owner_id`);
+    const r = await this.db.execute<{ o: string; s: string }>(sql`select owner_id::text o, sum(amount_centimes)::bigint s from money.ledger_entry where account = ${account} and owner_id in (${sql.join(ids.map((i) => sql`${i}::uuid`), sql`, `)}) group by owner_id`);
     for (const x of r) m.set(x.o, Number(x.s)); return m;
   }
   async totals() { return { platformRevenue: -(await this.balance("platform_revenue")), cashHeld: await this.balance("provider_cash_held"), earnings: -(await this.balance("provider_earnings")) }; }
