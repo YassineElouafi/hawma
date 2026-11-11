@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function scan(page: Page, name: string) {
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
-  const lines = r.violations.map((v) => `${v.id} [${v.impact}] ${v.help} — ${v.nodes.length} node(s): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
+  const lines = r.violations.map((v) => `${v.id} [${v.impact}] ${v.help} — ${v.nodes.length} node(s): ${v.nodes.slice(0, 3).map((n) => n.target.join(" ") + " :: " + (n.failureSummary ?? "").replace(/\s+/g, " ").slice(0, 220)).join(" | ")}`);
   console.log(`A11Y ${name}: ${lines.length ? "\n  " + lines.join("\n  ") : "no violations"}`);
   return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
 }
