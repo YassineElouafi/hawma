@@ -51,7 +51,8 @@ export async function registerHardening(app: NestFastifyApplication, deps: Deps 
   f.addHook("onResponse", async (req: any, reply: any) => {
     const ms = Number(process.hrtime.bigint() - req.startedAt) / 1e6; const route = req.routeOptions?.url ?? "unmatched"; const status = reply.statusCode;
     http.labels(req.method, route, String(status)).observe(ms / 1000);
-    if (route !== "/healthz" && route !== "/readyz" && route !== "/metrics" && !env.VITEST) console.log(JSON.stringify({ t: new Date().toISOString(), level: status >= 500 ? "error" : "info", reqId: req.reqId, method: req.method, route, status, ms: Math.round(ms * 10) / 10, ip: req.ip }));
+    const noisy = route === "/v1/dispatch-offers/pending" || route === "/v1/provider/presence" || route === "/v1/bookings";   // high-frequency polling: log 1 in 20 successes, all failures
+    if (route !== "/healthz" && route !== "/readyz" && route !== "/metrics" && !env.VITEST && (!noisy || status >= 400 || Math.random() < 0.05)) console.log(JSON.stringify({ t: new Date().toISOString(), level: status >= 500 ? "error" : "info", reqId: req.reqId, method: req.method, route, status, ms: Math.round(ms * 10) / 10, ip: req.ip }));
   });
 
   f.get("/readyz", async (_req: unknown, reply: any) => {
