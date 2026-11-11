@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { randomUUID } from "node:crypto";
-import { createApp } from "../src/main";
+import { createApp, startEventDelivery } from "../src/main";
 import { OVERRIDES } from "../src/app.module";
 import { hashPassword, verifyPassword } from "../src/modules/ops/staff.service";
 import { can, PERMISSIONS, ROLES } from "../src/domain/rbac";
@@ -11,7 +11,7 @@ let app: NestFastifyApplication;
 const mk = async (email: string, roles: string[], active = true) => {
   const id = randomUUID(); OVERRIDES.staffRepo.items.set(id, { id, email, passwordHash: await hashPassword("correct horse battery"), roles: roles as never, active }); return id;
 };
-beforeAll(async () => { app = await createApp(); await app.init(); await app.getHttpAdapter().getInstance().ready(); });
+beforeAll(async () => { app = await createApp(); await app.init(); await app.getHttpAdapter().getInstance().ready(); startEventDelivery(app); });
 afterAll(async () => { await app.close(); });
 const req = (method: "GET" | "POST", url: string, token?: string, payload?: object) => app.inject({ method, url, payload, headers: token ? { authorization: `Bearer ${token}` } : {} });
 const login = async (email: string) => (await req("POST", "/ops/login", undefined, { email, password: "correct horse battery" })).json().token as string;
@@ -130,5 +130,25 @@ describe("ops stats", () => {
     const s = r.json();
     expect(s.perDay).toHaveLength(14); expect(typeof s.total).toBe("number"); expect(s).toHaveProperty("pendingKyc"); expect(s).toHaveProperty("fillRate");
     expect((await req("GET", "/ops/stats")).statusCode).toBe(401);
+  });
+});
+
+describe("cash fee settlement via ops", () => {
+  it("finance records a payment: permission, reason, idempotency, audit", async () => {
+    const c = await (async () => { await req("POST", "/v1/auth/otp/request", undefined, { phone: "0681818181" }); return (await req("POST", "/v1/auth/otp/verify", undefined, { phone: "0681818181", code: OVERRIDES.otpSender.last.get("+212681818181")! })).json(); })();
+    const p = await (async () => { await req("POST", "/v1/auth/otp/request", undefined, { phone: "0682828282" }); return (await req("POST", "/v1/auth/otp/verify", undefined, { phone: "0682828282", code: OVERRIDES.otpSender.last.get("+212682828282")! })).json(); })();
+    const b = (await req("POST", "/v1/bookings", c.accessToken, { mode: "catalogue", providerId: p.userId, totalCentimes: 20000, paymentMethod: "cash" })).json();
+    for (const cmd of ["accept", "start-trip", "arrive", "start-job", "complete"]) await req("POST", `/v1/bookings/${b.id}/${cmd}`, p.accessToken);
+    await req("POST", `/v1/bookings/${b.id}/confirm`, c.accessToken); await new Promise((r) => setTimeout(r, 100));
+    await mk("fin@hawma.ma", ["finance"]); const fin = await login("fin@hawma.ma"); await mk("sup2@hawma.ma", ["support"]); const sup = await login("sup2@hawma.ma");
+    const debt = (await req("GET", "/ops/finance/debtors", fin)).json(); expect(debt.find((d: { providerId: string }) => d.providerId === p.userId)).toMatchObject({ owedCentimes: 3000 });
+    const ref = randomUUID(); const body = { providerId: p.userId, amountCentimes: 1000, reference: ref, reason: "cash received at office" };
+    expect((await req("POST", "/ops/finance/settlements", sup, body)).statusCode).toBe(403);                       // support cannot record payments
+    expect((await req("POST", "/ops/finance/settlements", fin, { ...body, reason: "no" })).statusCode).toBe(400);   // reason required
+    const ok = await req("POST", "/ops/finance/settlements", fin, body); expect(ok.json()).toEqual({ posted: true, owedAfterCentimes: 2000 });
+    const again = await req("POST", "/ops/finance/settlements", fin, body); expect(again.json()).toEqual({ posted: false, owedAfterCentimes: 2000 });
+    expect((await req("POST", "/ops/finance/settlements", fin, { ...body, reference: randomUUID(), amountCentimes: 5000 })).statusCode).toBe(422);
+    const audits = OVERRIDES.auditRepo.items.filter((a) => a.action === "finance.cash_settlement" && a.target === p.userId); expect(audits).toHaveLength(1);   // replay not re-audited
+    expect(audits[0]).toMatchObject({ reason: "cash received at office" });
   });
 });

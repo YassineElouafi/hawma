@@ -15,6 +15,11 @@ export class PgLedgerRepo implements LedgerRepo {
       return true;                                                                                  // balance is enforced by the deferred constraint trigger at COMMIT
     });
   }
+  async exists(txnId: string) { return [...(await this.db.execute(sql`select 1 from money.ledger_entry where txn_id = ${txnId}::uuid limit 1`))].length > 0; }
+  async debtors(limit: number) {
+    const r = await this.db.execute<{ o: string; s: string }>(sql`select owner_id::text o, sum(amount_centimes)::bigint s from money.ledger_entry where account in ('provider_cash_held','provider_earnings') and owner_id is not null group by owner_id having sum(amount_centimes) > 0 order by s desc limit ${limit}`);
+    return [...r].map((x) => ({ providerId: x.o, owedCentimes: Number(x.s) }));
+  }
   async balance(account: Account, ownerId?: string) {
     const r = await this.db.execute<{ s: string | null }>(ownerId ? sql`select sum(amount_centimes)::bigint s from money.ledger_entry where account = ${account} and owner_id = ${ownerId}::uuid` : sql`select sum(amount_centimes)::bigint s from money.ledger_entry where account = ${account}`);
     return Number([...r][0]?.s ?? 0);

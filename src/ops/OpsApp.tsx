@@ -11,7 +11,7 @@ type Kyc = { id: string; userId: string; tier: number; status: string; documents
 type Booking = { id: string; state: string; mode: string; customerId: string; providerId: string | null; totalCentimes: number; feeCentimes: number; paymentMethod: string; events?: { type: string; actor: string; at: string }[] };
 type Audit = { id: number; at: string; actorId: string; action: string; target: string; reason?: string };
 type Stats = { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[]; active: number; pendingKyc: number; fillRate: number | null };
-type Page = "overview" | "kyc" | "bookings" | "audit";
+type Page = "overview" | "kyc" | "bookings" | "finance" | "audit";
 
 async function call<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(API + path, { ...init, headers: { ...(init?.body ? { "content-type": "application/json" } : {}), authorization: `Bearer ${token}`, ...init?.headers } });
@@ -75,7 +75,7 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
 }
 
 /* ---------- shell ---------- */
-const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "audit", label: "Audit log", icon: ScrollText }];
+const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "finance", label: "Finance", icon: Banknote }, { id: "audit", label: "Audit log", icon: ScrollText }];
 
 function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogout: () => void }) {
   const [page, setPage] = useState<Page>(() => (location.hash.slice(1) as Page) || "overview");
@@ -129,6 +129,7 @@ function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogo
             {page === "overview" && <Overview token={token} go={setPage} />}
             {page === "kyc" && <KycQueue token={token} staff={staff} onChange={(n) => setPending(n)} />}
             {page === "bookings" && <Bookings token={token} />}
+            {page === "finance" && <Finance token={token} staff={staff} />}
             {page === "audit" && <AuditLog token={token} staff={staff} />}
           </motion.div></AnimatePresence>
           {can(staff, "admin") && <SeedDemo token={token} onDone={(m) => toast(m)} />}
@@ -284,6 +285,48 @@ function Bookings({ token }: { token: string }) {
             {!open.events?.length && <li className="text-ops-muted">No transitions yet</li>}
           </ol>
         </motion.aside></>)}</AnimatePresence>
+    </>
+  );
+}
+
+/* ---------- finance ---------- */
+type Debtor = { providerId: string; owedCentimes: number };
+function Finance({ token, staff }: { token: string; staff: Staff }) {
+  const allowed = can(staff, "finance"); const toast = useToast();
+  const { data: debtors, err, reload } = useLoad<Debtor[]>(token, "/ops/finance/debtors"); const { data: fin } = useLoad<{ platformRevenue: number; cashHeld: number; earnings: number }>(token, "/ops/finance");
+  const [sel, setSel] = useState<Debtor | null>(null); const [amount, setAmount] = useState(""); const [reason, setReason] = useState(""); const [busy, setBusy] = useState(false); const [e2, setE2] = useState("");
+  const submit = async () => {
+    if (!sel) return; setBusy(true); setE2("");
+    try { const r = await call<{ posted: boolean; owedAfterCentimes: number }>(token, "/ops/finance/settlements", { method: "POST", body: JSON.stringify({ providerId: sel.providerId, amountCentimes: Math.round(Number(amount) * 100), reference: crypto.randomUUID(), reason }) }); toast(`Payment recorded. Still owed: ${mad(r.owedAfterCentimes)}`); setSel(null); reload(); }
+    catch (x) { setE2((x as Error).message); } finally { setBusy(false); }
+  };
+  const valid = Number(amount) > 0 && reason.trim().length >= 5;
+  return (
+    <>
+      <PageHead title="Finance" sub="Fees owed by providers from cash jobs. Record cash received so the debt (and the dispatch cap) clears." />
+      <ErrBox m={err} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatTile label="Platform revenue" value={(fin?.platformRevenue ?? 0) / 100} format={(n) => Math.round(n).toLocaleString("en-US")} unit="MAD" icon={<Banknote size={15} />} color="var(--ops-violet)" />
+        <StatTile label="Provider earnings owed" value={(fin?.earnings ?? 0) / 100} format={(n) => Math.round(n).toLocaleString("en-US")} unit="MAD" icon={<Users2 size={15} />} color="var(--ops-blue)" />
+        <StatTile label="Cash collected by providers" value={(fin?.cashHeld ?? 0) / 100} format={(n) => Math.round(n).toLocaleString("en-US")} unit="MAD" icon={<Gauge size={15} />} color="var(--ops-amber)" />
+      </div>
+      <Card className="mt-4"><CardHeader><CardTitle>Providers owing fees</CardTitle></CardHeader><div className="pt-2"><Table><thead><tr><Th>Provider</Th><Th>Owes Hawma</Th><Th>Dispatch</Th><Th /></tr></thead><tbody>
+        {!debtors && !err && <Rows n={3} cols={4} />}
+        {debtors?.map((d) => <Tr key={d.providerId}><Td><span className="inline-flex items-center gap-2.5"><Avatar id={d.providerId} /><span className="font-mono text-xs">{short(d.providerId)}</span></span></Td><Td className="tabular-nums font-medium">{mad(d.owedCentimes)}</Td><Td>{d.owedCentimes > 30000 ? <Pill tone="red" dot>Blocked (cap 300 MAD)</Pill> : <Pill tone="green" dot>Eligible</Pill>}</Td><Td className="text-end"><OBtn size="sm" variant="primary" disabled={!allowed} onClick={() => { setSel(d); setAmount(String(d.owedCentimes / 100)); setReason(""); setE2(""); }}>Record payment</OBtn></Td></Tr>)}
+        {debtors?.length === 0 && <tr><td colSpan={4}><Empty icon={<BadgeCheck size={18} />} title="No outstanding fees" hint="Providers appear here after confirmed cash jobs." /></td></tr>}
+      </tbody></Table></div></Card>
+      <AnimatePresence>{sel && (
+        <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="Record payment">
+          <motion.div initial={{ scale: 0.97, y: 10 }} animate={{ scale: 1, y: 0 }} className="ops-root w-full max-w-md rounded-xl border border-ops-border bg-ops-card p-5 shadow-2xl">
+            <div className="flex items-start justify-between"><div><h2 className="text-base font-semibold">Record cash payment</h2><p className="mt-0.5 font-mono text-xs text-ops-muted">provider {sel.providerId} · owes {mad(sel.owedCentimes)}</p></div><OBtn variant="ghost" size="sm" aria-label="Close" onClick={() => setSel(null)}><X size={15} /></OBtn></div>
+            <label htmlFor="f-amount" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Amount received (MAD)</label>
+            <input id="f-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9 w-full rounded-lg border border-ops-border bg-ops-card px-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
+            <label htmlFor="f-reason" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Reason / receipt reference <span className="font-normal text-ops-muted">(audit-logged)</span></label>
+            <textarea id="f-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full resize-none rounded-lg border border-ops-border bg-ops-card px-3 py-2 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
+            <ErrBox m={e2} />
+            <OBtn variant="primary" className="mt-4 h-9 w-full" disabled={busy || !valid} onClick={submit}>Record payment</OBtn>
+          </motion.div>
+        </motion.div>)}</AnimatePresence>
     </>
   );
 }

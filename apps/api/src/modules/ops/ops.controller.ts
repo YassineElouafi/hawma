@@ -6,6 +6,7 @@ import { LedgerService } from "../ledger/ledger.service";
 import { StaffService, type Staff } from "./staff.service";
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(8).max(200) });
+const settleSchema = z.object({ providerId: z.string().uuid(), amountCentimes: z.number().int().min(1).max(10_000_000), reference: z.string().uuid(), reason: z.string().min(5).max(300) });
 const decisionSchema = z.object({ reason: z.string().max(500).optional() });
 
 @Controller("ops")
@@ -38,6 +39,14 @@ export class OpsController {
     return { ...b, active, pendingKyc: q.length, fillRate: done + lost ? done / (done + lost) : null };
   }
   @Get("finance") async finance(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ledger.totals(); }
+  @Get("finance/debtors") async debtors(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ledger.debtors(50); }
+  /** Finance records cash received from a provider against fees owed. Idempotent on `reference`; audited with a reason. */
+  @Post("finance/settlements") @HttpCode(200) async settle(@Headers("authorization") h: string, @Body() b: unknown) {
+    const s = await this.me(h); this.staff.require(s, "payouts.approve"); const v = settleSchema.parse(b);
+    const r = await this.ledger.settleCash(v.providerId, v.amountCentimes, v.reference);
+    if (r.posted) await this.ops.auditNote(s, "finance.cash_settlement", v.providerId, v.reason, { amountCentimes: v.amountCentimes, reference: v.reference });
+    return r;
+  }
   @Get("bookings") async listBookings(@Headers("authorization") h: string, @Query("state") state?: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.listAll(state || undefined, 100); }
   @Get("bookings/:id") async oneBooking(@Headers("authorization") h: string, @Param("id") id: string) { const s = await this.me(h); this.staff.require(s, "bookings.read"); return this.bookings.getAny(id); }
   @Get("audit") async audit(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ops.auditLog(); }

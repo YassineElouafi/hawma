@@ -87,3 +87,20 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("cash settlement on real Postgres", () => {
+  it("settlement is concurrency-safe and idempotent; debtors reflect it", async () => {
+    const { LedgerService } = await import("../src/modules/ledger/ledger.service"); const { PgLedgerRepo } = await import("../src/modules/ledger/pg-ledger.repo");
+    const client = postgres(url!, { max: 8 }); const db2 = drizzle(client); const repo = new PgBookingRepo(db2); const svc = new BookingsService(repo); const ledger = new LedgerService(new PgLedgerRepo(db2), repo);
+    const cust = randomUUID(), prov = randomUUID();
+    const b = await svc.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 20000, paymentMethod: "cash" });
+    for (const c of ["accept", "start_trip", "arrive", "start_job", "complete"] as const) await svc.command(b.id, c, prov);
+    await svc.command(b.id, "confirm", cust); await ledger.settleBooking(b.id);
+    const ref = randomUUID(); const rs = await Promise.all(Array.from({ length: 5 }, () => ledger.settleCash(prov, 1000, ref)));
+    expect(rs.filter((r) => r.posted)).toHaveLength(1);
+    expect((await ledger.cashOwedFor([prov])).get(prov)).toBe(2000);
+    expect((await ledger.debtors(500)).find((d) => d.providerId === prov)?.owedCentimes).toBe(2000);
+    await ledger.settleCash(prov, 2000, randomUUID()); expect((await ledger.debtors(500)).some((d) => d.providerId === prov)).toBe(false);
+    await client.end();
+  });
+});

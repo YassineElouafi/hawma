@@ -11,6 +11,9 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   const days = Array.from({ length: 14 }, (_, i) => ({ date: new Date(Date.UTC(2026, 10, 1 + i)).toISOString().slice(0, 10), count: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i], gmvCentimes: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i] * 14000 }));
   await page.route("**/api/ops/stats", (r) => r.fulfill({ json: { total: 126, byState: { Settled: 61, Accepted: 14, Requested: 9, Cancelled: 12, Completed: 22, Disputed: 3, InProgress: 5 }, gmvCentimes: 1_182_000, feesCentimes: 177_300, perDay: days, active: 19, pendingKyc: 1, fillRate: 0.78 } }));
   await page.route("**/api/ops/finance", (r) => r.fulfill({ json: { platformRevenue: 177300, cashHeld: 900000, earnings: 1004700 } }));
+  const posted: unknown[] = [];
+  await page.route("**/api/ops/finance/debtors", (r) => r.fulfill({ json: [{ providerId: "f7777777-0000-0000-0000-000000000000", owedCentimes: 4500 }, { providerId: "f8888888-0000-0000-0000-000000000000", owedCentimes: 1500 }] }));
+  await page.route("**/api/ops/finance/settlements", (r) => { posted.push(r.request().postDataJSON()); r.fulfill({ json: { posted: true, owedAfterCentimes: 0 } }); });
   await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: kyc }));
   const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   await page.route("**/api/ops/kyc/*/documents", (r) => r.fulfill({ json: [{ id: "d1", kind: "cin_front", mime: "image/png", size: 70 }, { id: "d2", kind: "selfie", mime: "image/png", size: 70 }] }));
@@ -58,6 +61,17 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByText("Timeline")).toBeVisible();
   await page.screenshot({ path: "screenshots/ops-4-booking.png" });
   await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Finance" }).first().click();
+  await expect(page.getByRole("heading", { name: "Finance" })).toBeVisible();
+  await page.screenshot({ path: "screenshots/ops-4b-finance.png" });
+  await page.getByRole("button", { name: "Record payment" }).first().click();
+  const rec = page.getByRole("button", { name: "Record payment" }).last();
+  await expect(rec).toBeDisabled();
+  await page.getByLabel(/Reason/).fill("cash received at the office");
+  await expect(rec).toBeEnabled();
+  await rec.click();
+  await expect.poll(() => posted.length).toBe(1);
+  expect(posted[0]).toMatchObject({ providerId: "f7777777-0000-0000-0000-000000000000", amountCentimes: 4500, reason: "cash received at the office" });
   await page.getByRole("button", { name: "Audit log" }).first().click();
   await expect(page.getByText("kyc.approved")).toBeVisible();
   await page.screenshot({ path: "screenshots/ops-5-audit.png" });

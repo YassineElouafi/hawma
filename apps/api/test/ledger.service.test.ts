@@ -41,3 +41,21 @@ describe("ledger service", () => {
     expect(await s.ledger.settleBooking("00000000-0000-0000-0000-000000000000")).toBe("skipped");
   });
 });
+
+describe("cash fee settlement", () => {
+  it("reduces what the provider owes; cannot overpay; is idempotent on the reference", async () => {
+    const s = await setup(); const b = await s.done("p1", mad(200)); await s.ledger.settleBooking(b.id);          // owes 30 MAD
+    expect(await s.ledger.settleCash("p1", mad(10), "ref-1")).toEqual({ posted: true, owedAfterCentimes: mad(20) });
+    expect(await s.ledger.settleCash("p1", mad(10), "ref-1")).toEqual({ posted: false, owedAfterCentimes: mad(20) }); // replay: no double credit
+    await expect(s.ledger.settleCash("p1", mad(25), "ref-2")).rejects.toThrow(/only owes/);                      // more than owed
+    expect(await s.ledger.settleCash("p1", mad(20), "ref-3")).toEqual({ posted: true, owedAfterCentimes: 0 });
+    await expect(s.ledger.settleCash("p1", 0, "ref-4")).rejects.toThrow(/positive/); await expect(s.ledger.settleCash("p1", 1.5, "ref-5")).rejects.toThrow(/positive/);
+    await expect(s.ledger.settleCash("p-none", mad(1), "ref-6")).rejects.toThrow(/only owes/);
+    expect((await s.ledger.totals()).platformRevenue).toBe(mad(30));                                                  // fee revenue is unaffected by collection
+  });
+  it("lists debtors largest first and drops settled ones", async () => {
+    const s = await setup(); for (const [p, t] of [["a", 100], ["b", 1000], ["c", 400]] as const) await s.ledger.settleBooking((await s.done(p, mad(t))).id);
+    expect((await s.ledger.debtors()).map((d) => d.providerId)).toEqual(["b", "c", "a"]);
+    await s.ledger.settleCash("b", mad(150), "r"); expect((await s.ledger.debtors()).map((d) => d.providerId)).toEqual(["c", "a"]);
+  });
+});
