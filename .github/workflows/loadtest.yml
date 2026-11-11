@@ -20,6 +20,8 @@ jobs:
       HAWMA_STORE: postgres
       OTP_DEBUG_RETURN_CODE: "true"
       OTP_IP_LIMIT: "100000"
+      RATE_LIMIT_MAX: "100000"
+      RATE_LIMIT_UNAUTH_MAX: "100000"
       PORT: "3999"
       STAFF_EMAIL: load@hawma.ma
       STAFF_PASSWORD: load-test-password-123

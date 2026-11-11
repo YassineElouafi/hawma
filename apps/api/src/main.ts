@@ -16,8 +16,9 @@ import Redis from "ioredis";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
+import { configProblems, registerHardening } from "./hardening";
 
-export async function createApp() {
+export async function createApp(opts: { hardening?: boolean } = {}) {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true, bodyLimit: 5_000_000 }), { logger: ["error", "warn"], bodyParser: false });
   app.useGlobalFilters(new ZodFilter());
   // Clients commonly send "content-type: application/json" with an empty body on command endpoints (accept, cancel…).
@@ -27,6 +28,7 @@ export async function createApp() {
     if (!body) return done(null, undefined);
     try { done(null, JSON.parse(body)); } catch (e) { (e as Error & { statusCode?: number }).statusCode = 400; done(e as Error); }
   });
+  if (opts.hardening !== false) await registerHardening(app, { db: db ?? undefined, redis: process.env.REDIS_URL ? new Redis(process.env.REDIS_URL) : undefined });
   return app;
 }
 
@@ -68,6 +70,8 @@ async function bootstrapAdmin() {
 }
 
 if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+  const problems = configProblems(process.env);
+  if (problems.length) { console.error(`Refusing to start — configuration problems:\n - ${problems.join("\n - ")}`); process.exit(1); }
   const app = await createApp();
   await app.listen(Number(process.env.PORT ?? 3001), "0.0.0.0");
   startRealtime(app);
