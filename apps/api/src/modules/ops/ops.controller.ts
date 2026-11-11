@@ -43,6 +43,10 @@ export class OpsController {
     return { ...b, active, pendingKyc: q.length, fillRate: done + lost ? done / (done + lost) : null };
   }
   @Get("finance") async finance(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ledger.totals(); }
+  @Get("backups") async backups(@Headers("authorization") h: string) {
+    const s = await this.me(h); this.staff.require(s, "bookings.read");
+    const d = await this.ops.backupStatus(); return d;
+  }
   @Get("finance/debtors") async debtors(@Headers("authorization") h: string) { const s = await this.me(h); this.staff.require(s, "audit.read"); return this.ledger.debtors(50); }
   /** Finance records cash received from a provider against fees owed. Idempotent on `reference`; audited with a reason. */
   @Post("finance/settlements") @HttpCode(200) async settle(@Headers("authorization") h: string, @Body() b: unknown) {

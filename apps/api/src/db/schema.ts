@@ -145,3 +145,8 @@ export const disputes = booking.table("dispute", {
   status: text("status").notNull().default("open"), outcome: text("outcome"), refundCentimes: integer("refund_centimes"), resolutionNote: text("resolution_note"), resolvedBy: uuid("resolved_by"),
   createdAt: createdAt(), resolvedAt: timestamp("resolved_at", { withTimezone: true }),
 }, (t) => [uniqueIndex("dispute_one_per_booking_uq").on(t.bookingId), index("dispute_status_idx").on(t.status)]);
+
+export const backupLog = platform.table("backup_log", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(), at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  file: text("file"), bytes: bigint("bytes", { mode: "number" }), ok: boolean("ok").notNull(), error: text("error"),
+});

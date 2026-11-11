@@ -34,7 +34,8 @@ export class MemoryKycRepo implements KycRepo {
 
 @Injectable()
 export class OpsService {
-  constructor(private audit: AuditRepo, private kyc: KycRepo, readonly seeder?: () => Promise<{ created: number; total: number }>) {}
+  constructor(private audit: AuditRepo, private kyc: KycRepo, readonly seeder?: () => Promise<{ created: number; total: number }>, readonly backupReader?: () => Promise<{ at: string; ok: boolean; file: string | null; bytes: number | null; error: string | null }[]>) {}
+  async backupStatus() { const rows = (await this.backupReader?.()) ?? []; const lastOk = rows.find((r) => r.ok); return { configured: !!this.backupReader, lastSuccessAt: lastOk?.at ?? null, ageSeconds: lastOk ? Math.round((Date.now() - new Date(lastOk.at).getTime()) / 1000) : null, recent: rows }; }
   auditNote(staff: Staff, action: string, target: string, reason: string, meta: Record<string, unknown>) { return this.audit.append({ actorId: staff.id, action, target, reason, meta }); }
 
   /** Every privileged action goes through here: reason enforced, audit written BEFORE the effect is reported. */

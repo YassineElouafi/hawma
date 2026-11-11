@@ -19,6 +19,7 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await page.route("**/api/ops/disputes/*/resolve", (r) => { resolved.push(r.request().postDataJSON()); r.fulfill({ json: { id: "x1", status: "resolved" } }); });
   await page.route("**/api/ops/mfa/setup", (r) => r.fulfill({ json: { secret: "JBSWY3DPEHPK3PXP", otpauthUrl: "otpauth://totp/Hawma%20Ops:admin%40hawma.ma?secret=JBSWY3DPEHPK3PXP&issuer=Hawma%20Ops" } }));
   await page.route("**/api/ops/mfa/enable", (r) => r.request().postDataJSON().code === "123456" ? r.fulfill({ json: { enabled: true, recoveryCodes: ["a1b2c-d3e4f", "11111-22222", "33333-44444", "55555-66666", "77777-88888", "99999-00000", "abcde-12345", "fedcb-54321"] } }) : r.fulfill({ status: 400, contentType: "application/problem+json", json: { title: "that code is not valid" } }));
+  await page.route("**/api/ops/backups", (r) => r.fulfill({ json: { configured: true, lastSuccessAt: "2026-11-11T05:00:00Z", ageSeconds: 5400, recent: [{ ok: true, at: "2026-11-11T05:00:00Z", file: "hawma-20261111T050000Z.dump.enc", bytes: 61440, error: null }] } }));
   await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: kyc }));
   const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   await page.route("**/api/ops/kyc/*/documents", (r) => r.fulfill({ json: [{ id: "d1", kind: "cin_front", mime: "image/png", size: 70 }, { id: "d2", kind: "selfie", mime: "image/png", size: 70 }] }));
@@ -38,6 +39,8 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await expect(page.getByText("126")).toBeVisible();                       // count-up reaches the value
   await page.waitForTimeout(1500);
+  await expect(page.getByText("Database backups")).toBeVisible();
+  await expect(page.getByText(/last success 1\.5 h ago/)).toBeVisible();
   await page.screenshot({ path: "screenshots/ops-2a-overview.png" });
   await page.keyboard.press("Control+k");
   await expect(page.getByRole("option", { name: /Go to Bookings/ })).toBeVisible();

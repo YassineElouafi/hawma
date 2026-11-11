@@ -173,3 +173,11 @@ describe("disputes over HTTP", () => {
     expect((await req("POST", `/ops/disputes/${d.json().id}/resolve`, sup, { outcome: "reject", note: "second try here" })).statusCode).toBe(409);
   });
 });
+
+describe("backup status", () => {
+  it("reports not-configured in memory mode and requires staff auth", async () => {
+    await mk("bk@hawma.ma", ["read_only"]); const t = await login("bk@hawma.ma");
+    expect((await req("GET", "/ops/backups")).statusCode).toBe(401);
+    expect((await req("GET", "/ops/backups", t)).json()).toMatchObject({ configured: false, lastSuccessAt: null, ageSeconds: null, recent: [] });
+  });
+});

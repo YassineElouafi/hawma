@@ -24,6 +24,8 @@ import { PgAuditRepo, PgKycRepo } from "./modules/ops/pg-ops.repos";
 import { PgStaffRepo } from "./modules/ops/pg-staff.repo";
 import { PgSessionRepo, PgUserRepo } from "./modules/auth/user.repo";
 import { seedDemo } from "./db/seed-demo";
+import { backupLog as schemaBackup } from "./db/schema";
+import { desc } from "drizzle-orm";
 import { senderFromEnv } from "./modules/auth/otp-senders";
 import { OpsController } from "./modules/ops/ops.controller";
 import { VerificationController } from "./modules/ops/verification.controller";
@@ -92,7 +94,7 @@ OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRe
     { provide: "CATALOGUE_REPO", useFactory: () => OVERRIDES.catalogueRepo },
     CatalogueService,
     { provide: StaffService, useFactory: () => new StaffService(OVERRIDES.staffRepo) },
-    { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo, db ? () => seedDemo(db) : undefined) },
+    { provide: OpsService, useFactory: () => new OpsService(OVERRIDES.auditRepo, OVERRIDES.kycRepo, db ? () => seedDemo(db) : undefined, db ? async () => (await db.select().from(schemaBackup).orderBy(desc(schemaBackup.id)).limit(8)).map((r) => ({ at: r.at.toISOString(), ok: r.ok, file: r.file, bytes: r.bytes, error: r.error })) : undefined) },
     { provide: AuthService, useFactory: () => new AuthService(process.env.REDIS_URL ? new RedisOtpStore(new Redis(process.env.REDIS_URL)) : new MemoryOtpStore(), OVERRIDES.otpSender, db ? new PgUserRepo(db) : undefined, db ? new PgSessionRepo(db) : undefined) },
     { provide: BookingsService, useFactory: () => { const repo = db ? new PgBookingRepo(db) : new MemoryBookingRepo(); OVERRIDES.bookingRepoRef = repo; return new BookingsService(repo); } },
   ],

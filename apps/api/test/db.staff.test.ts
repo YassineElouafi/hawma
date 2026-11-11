@@ -43,3 +43,18 @@ const url = process.env.DATABASE_URL;
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("backup log on real Postgres", () => {
+  it("successful and failed runs are recorded and the metric reflects the last success", async () => {
+    const { sql } = await import("drizzle-orm"); const client = postgres(url!, { max: 2 }); const d = drizzle(client);
+    await client`delete from platform.backup_log`;
+    await client`insert into platform.backup_log (ok, error) values (false, 'boom')`;
+    let [r] = await client`select extract(epoch from now() - max(at))::float s from platform.backup_log where ok`; expect(r.s).toBeNull();                 // only failures so far → gauge reports -1
+    await client`insert into platform.backup_log (ok, file, bytes) values (true, 'hawma-x.dump.enc', 1234)`;
+    [r] = await client`select extract(epoch from now() - max(at))::float s from platform.backup_log where ok`; expect(r.s).toBeGreaterThanOrEqual(0); expect(r.s).toBeLessThan(5);
+    const { OpsService, MemoryAuditRepo, MemoryKycRepo } = await import("../src/modules/ops/ops.service"); const { backupLog } = await import("../src/db/schema"); const { desc } = await import("drizzle-orm");
+    const audit = new MemoryAuditRepo(); const ops = new OpsService(audit, new MemoryKycRepo(audit), undefined, async () => (await d.select().from(backupLog).orderBy(desc(backupLog.id)).limit(8)).map((x) => ({ at: x.at.toISOString(), ok: x.ok, file: x.file, bytes: x.bytes, error: x.error })));
+    const st = await ops.backupStatus(); expect(st.configured).toBe(true); expect(st.recent[0].ok).toBe(true); expect(st.ageSeconds).toBeLessThan(10); expect(st.recent.some((x) => !x.ok && x.error === "boom")).toBe(true);
+    void sql; await client.end();
+  });
+});

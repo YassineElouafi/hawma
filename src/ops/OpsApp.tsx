@@ -152,6 +152,8 @@ function Overview({ token, go }: { token: string; go: (p: Page) => void }) {
   const { data: s, err } = useLoad<Stats>(token, "/ops/stats"); const { data: recent } = useLoad<Booking[]>(token, "/ops/bookings");
   const [fin, setFin] = useState<{ platformRevenue: number; cashHeld: number; earnings: number } | null>(null);
   useEffect(() => { call<{ platformRevenue: number; cashHeld: number; earnings: number }>(token, "/ops/finance").then(setFin).catch(() => {}); }, [token]);
+  const [bk, setBk] = useState<{ configured: boolean; ageSeconds: number | null; recent: { ok: boolean }[] } | null>(null);
+  useEffect(() => { call<typeof bk>(token, "/ops/backups").then(setBk).catch(() => {}); }, [token]);
   const [metric, setMetric] = useState<"count" | "gmv">("count");
   const days = s?.perDay ?? []; const series = days.map((d) => (metric === "count" ? d.count : Math.round(d.gmvCentimes / 100)));
   const half = Math.floor(days.length / 2); const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
@@ -180,6 +182,9 @@ function Overview({ token, go }: { token: string; go: (p: Page) => void }) {
           <CardBody>{s && states.length ? <BarList items={states.map(([label, value]) => ({ label, value, tone: `var(--ops-${({ green: "green", red: "red", amber: "amber", blue: "blue", violet: "violet", neutral: "muted", accent: "accent" } as Record<string, string>)[stateTone(label)]})` }))} /> : s ? <Empty icon={<ClipboardList size={18} />} title="No bookings yet" hint="Bookings appear here as customers book services." /> : <Skeleton className="h-40" />}</CardBody>
         </Card>
       </div>
+      {bk && <Card className="mt-4"><div className="flex flex-wrap items-center gap-3 px-5 py-3.5"><ShieldCheck size={16} className="text-ops-accent" /><span className="font-medium">Database backups</span>
+        {!bk.configured ? <Pill tone="neutral">not available in this environment</Pill> : bk.ageSeconds == null ? <Pill tone="red" dot>no successful backup recorded yet</Pill> : <Pill tone={bk.ageSeconds > 43200 ? "red" : "green"} dot>last success {bk.ageSeconds < 5400 ? `${Math.max(1, Math.round(bk.ageSeconds / 60))} min` : `${(bk.ageSeconds / 3600).toFixed(1)} h`} ago</Pill>}
+        <span className="ms-auto text-xs text-ops-muted">encrypted · every 6 h · restore drill passes in CI</span></div></Card>}
       <Card className="mt-4">
         <CardHeader><CardTitle>Recent bookings</CardTitle><OBtn size="sm" variant="ghost" onClick={() => go("bookings")}>View all →</OBtn></CardHeader>
         <div className="pt-2"><Table><thead><tr><Th>Booking</Th><Th>State</Th><Th>Customer</Th><Th>Total</Th></tr></thead><tbody>

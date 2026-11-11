@@ -43,6 +43,7 @@ export async function registerHardening(app: NestFastifyApplication, deps: Deps 
   if (deps.db) {
     const db = deps.db;
     new Gauge({ name: "outbox_unpublished_events", help: "Outbox rows not yet delivered (should hover near 0)", registers: [registry], async collect() { const r = await db.execute<{ n: number }>(sql`select count(*)::int n from platform.outbox where published_at is null`); this.set(Number([...r][0]?.n ?? 0)); } });
+    new Gauge({ name: "backup_last_success_age_seconds", help: "Seconds since the last successful database backup (alert if > 2x the interval)", registers: [registry], async collect() { const r = await db.execute<{ s: number | null }>(sql`select extract(epoch from now() - max(at))::float s from platform.backup_log where ok`); const v = [...r][0]?.s; this.set(v == null ? -1 : Number(v)); } });
     new Gauge({ name: "dispatch_open_offers", help: "Dispatch offers awaiting an answer", registers: [registry], async collect() { const r = await db.execute<{ n: number }>(sql`select count(*)::int n from booking.dispatch_offer where status = 'offered'`); this.set(Number([...r][0]?.n ?? 0)); } });
     new Gauge({ name: "dispatch_waiting_requests", help: "Dispatch bookings queued for a provider", registers: [registry], async collect() { const r = await db.execute<{ n: number }>(sql`select count(*)::int n from booking.booking where mode = 'dispatch' and state = 'Requested'`); this.set(Number([...r][0]?.n ?? 0)); } });
   }
