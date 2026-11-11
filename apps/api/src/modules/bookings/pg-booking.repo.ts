@@ -28,7 +28,7 @@ export class PgBookingRepo implements BookingRepo {
       lat: b.lat ?? 0, lng: b.lng ?? 0, categoryId: b.categoryId ?? null,
         offerId: b.offerId ?? null, scheduledAt: b.scheduledAt ? new Date(b.scheduledAt) : null, durationMin: b.durationMin ?? 60, localDate: b.localDate ?? null, startMin: b.startMin ?? null, slotFrom: b.slotFrom ?? null, slotTo: b.slotTo ?? null,
       });
-    } catch (e) { const c = e as { code?: string; cause?: { code?: string } }; if ((c.code ?? c.cause?.code) === "23P01") throw new ConflictException("that time slot is no longer available"); throw e; }   // exclusion_violation
+    } catch (e) { const c = e as { code?: string; cause?: { code?: string } }; const code = c.code ?? c.cause?.code; if (code === "23P01" || code === "40P01") throw new ConflictException("that time slot is no longer available"); throw e; }   // exclusion_violation, or deadlock_detected when two overlapping inserts race (one of them must lose)
   }
 
   async stats(days: number) {
