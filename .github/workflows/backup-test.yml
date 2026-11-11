@@ -1,0 +1,36 @@
+name: Backup and restore drill
+on: workflow_dispatch
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: hawma, POSTGRES_DB: hawma }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:hawma@localhost:5432/hawma
+      BACKUP_PASSPHRASE: drill-passphrase-123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/api/package-lock.json }
+      - run: npm ci
+      - run: npx tsx src/db/migrate.ts
+      - name: Create realistic data (jobs, ledger, disputes, documents) through the real service layer
+        run: npx tsx loadtest/seed-for-backup.ts
+      - name: Build backup image
+        run: docker build -t hawma-backup backup
+      - name: Take an encrypted backup
+        run: |
+          mkdir -p /tmp/backups
+          docker run --rm --network host -e DATABASE_URL -e BACKUP_PASSPHRASE -e BACKUP_DIR=/backups -v /tmp/backups:/backups hawma-backup backup.sh once
+          ls -la /tmp/backups
+      - name: Restore into a brand-new database
+        run: |
+          docker run --rm --network host -e PGPASSWORD=hawma postgres:16 psql -h localhost -U postgres -c 'create database hawma_restore'
+          docker run --rm --network host -e BACKUP_PASSPHRASE -v /tmp/backups:/backups hawma-backup restore.sh "$(ls /tmp/backups/*.enc | head -1)" postgres://postgres:hawma@localhost:5432/hawma_restore
+      - name: Verify the restored data matches the source
+        run: npx tsx loadtest/verify-restore.ts
