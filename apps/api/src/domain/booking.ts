@@ -36,7 +36,7 @@ const RULES: Record<Command, Rule> = {
 
 export const TERMINAL: BookingState[] = ["Settled", "Refunded", "Declined", "Expired", "Cancelled"];
 
-export interface BookingEvent { type: `booking.${string}`; from: BookingState; to: BookingState; command: Command; actor: Actor; at: string }
+export interface BookingEvent { type: `booking.${string}`; from: BookingState; to: BookingState; command: Command | "reschedule"; actor: Actor; at: string }
 
 export class IllegalTransition extends Error {
   constructor(public command: Command, public state: BookingState, reason: string) {

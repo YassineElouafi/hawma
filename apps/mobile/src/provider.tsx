@@ -198,3 +198,42 @@ export function ProviderOffers({ insetTop }: { insetTop: number }) {
     </View>
   );
 }
+
+/** Weekly working hours editor: per day on/off and start/end in 30-minute steps. Saved with PUT /v1/me/availability. */
+interface DayRule { on: boolean; start: number; end: number }
+const DEFAULT_DAY: DayRule = { on: false, start: 540, end: 1080 };
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+export function ProviderSchedule({ insetTop }: { insetTop: number }) {
+  const { t } = useT(); const [days, setDays] = useState<DayRule[] | null>(null); const [busy, setBusy] = useState(false); const [dirty, setDirty] = useState(false);
+  useEffect(() => { api("/v1/me/availability").then((rules: { weekday: number; startMin: number; endMin: number }[]) => { const d = Array.from({ length: 7 }, () => ({ ...DEFAULT_DAY })); for (const r of rules) d[r.weekday] = { on: true, start: r.startMin, end: r.endMin }; setDays(d); }).catch(() => setDays(Array.from({ length: 7 }, () => ({ ...DEFAULT_DAY })))); }, []);
+  const set = (i: number, patch: Partial<DayRule>) => { setDays((d) => d!.map((x, n) => (n === i ? { ...x, ...patch } : x))); setDirty(true); };
+  const step = (i: number, key: "start" | "end", delta: number) => { const d = days![i]; const v = Math.min(1410, Math.max(0, d[key] + delta)); if (key === "start" ? v < d.end : v > d.start) set(i, { [key]: v }); };
+  const save = async () => {
+    if (!days) return; setBusy(true);
+    try { await api("/v1/me/availability", { method: "PUT", body: JSON.stringify({ rules: days.flatMap((d, weekday) => (d.on ? [{ weekday, startMin: d.start, endMin: d.end }] : [])) }) }); setDirty(false); Alert.alert(t("scheduleSaved")); }
+    catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setBusy(false); }
+  };
+  const order = [1, 2, 3, 4, 5, 6, 0];                                   // Monday first
+  const Stepper = ({ i, k }: { i: number; k: "start" | "end" }) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <Pressable onPress={() => step(i, k, -30)} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: C.hairline, alignItems: "center", justifyContent: "center" }}><Text style={{ fontWeight: "800", color: C.ink }}>−</Text></Pressable>
+      <Text style={{ minWidth: 48, textAlign: "center", fontWeight: "800", color: C.ink }}>{hhmm(days![i][k])}</Text>
+      <Pressable onPress={() => step(i, k, 30)} style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: C.hairline, alignItems: "center", justifyContent: "center" }}><Text style={{ fontWeight: "800", color: C.ink }}>+</Text></Pressable>
+    </View>
+  );
+  return (
+    <View style={{ flex: 1 }}>
+      <LargeTitle top={insetTop} title={t("schedule")} />
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+        <Text style={{ color: C.mute, lineHeight: 20, marginBottom: 12 }}>{t("scheduleHint")}</Text>
+        {!days ? <CardSkeleton /> : order.map((i) => (
+          <Card key={i} style={{ marginBottom: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}><Text style={{ fontWeight: "800", fontSize: 16, color: days[i].on ? C.ink : C.faint }}>{t(`d${i}` as Key)}</Text><Switch value={days[i].on} onValueChange={(v) => set(i, { on: v })} trackColor={{ true: C.emerald2, false: C.border }} thumbColor="#fff" /></View>
+            {days[i].on ? <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12 }}><Stepper i={i} k="start" /><Text style={{ color: C.mute, alignSelf: "center" }}>→</Text><Stepper i={i} k="end" /></View> : <Text style={{ color: C.faint, marginTop: 6 }}>{t("closed")}</Text>}
+          </Card>
+        ))}
+      </ScrollView>
+      <View style={{ padding: 16, paddingTop: 0 }}><Button label={t("saveSchedule")} onPress={save} busy={busy} disabled={!dirty} /></View>
+    </View>
+  );
+}

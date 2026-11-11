@@ -29,5 +29,6 @@ export class CatalogueController {
   @Get("me/provider") async provider(@Headers("authorization") h: string) { return this.svc.providerSummary(await this.uid(h)); }
   @Get("search") search(@Query() q: unknown) { return this.svc.search(searchSchema.parse(q), new Date().toISOString().slice(0, 10)); }
   @Get("offers/:id/slots") slots(@Param("id") id: string, @Query() q: unknown) { const v = slotsSchema.parse(q); return this.svc.slots(id, v.from, v.days, v.durationMin); }
+  @Get("me/availability") async myAvailability(@Headers("authorization") h: string) { return this.svc.availabilityOf(await this.uid(h)); }
   @Put("me/availability") @HttpCode(204) async availability(@Headers("authorization") h: string, @Body() b: unknown) { await this.svc.setAvailability(await this.uid(h), rulesSchema.parse(b).rules); }
 }

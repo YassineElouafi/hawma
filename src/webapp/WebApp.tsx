@@ -5,6 +5,7 @@ import { useI18n, LANGS, type Lang } from "@/i18n";
 import { Avatar, Card, Empty, OBtn, Pill, Segmented, Skeleton, stateTone } from "@/components/arc/primitives";
 import { Toaster, useToast } from "@/components/arc/overlays";
 import { cn } from "@/lib/utils";
+import { SlotPicker, type Slot } from "./SlotPicker";
 import { accessToken, api, ApiError, isAuthed, onAuthChange, post, save } from "./api";
 
 const CATS = [["cleaning", "✨"], ["diy", "🔧"], ["garden", "🌿"], ["tutoring", "📚"], ["errands", "🛒"], ["rides", "🚗"], ["pets", "🐾"], ["lending", "📦"]] as const;
@@ -16,7 +17,7 @@ const T: Record<Lang, Record<string, string>> = {
     language: "Langue", logout: "Se déconnecter", account: "Compte", back: "Retour", reviews: "avis", jobs: "missions", c_cleaning: "Ménage", c_diy: "Bricolage", c_garden: "Jardin", c_tutoring: "Cours", c_errands: "Courses", c_rides: "Transport", c_pets: "Animaux", c_lending: "Prêt",
     urgent: "Besoin d'aide maintenant ?", urgentHint: "On cherche le prestataire le plus proche, en direct.", requestNow: "Lancer la demande", urgentSent: "Recherche en cours… ✔", price: "Prix (MAD)", searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", anon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.",
     report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Paiement suspendu le temps de l'examen.", underReview: "En cours d'examen par notre équipe",
-    chooseTime: "Choisis un créneau", noSlots: "Aucune disponibilité cette semaine", durationLabel: "Durée", hours: "h", total: "Total", slotTaken: "Ce créneau vient d'être pris, choisis-en un autre.",
+    reschedule: "Changer l'horaire", rescheduled: "Horaire modifié ✔", chooseTime: "Choisis un créneau", noSlots: "Aucune disponibilité cette semaine", durationLabel: "Durée", hours: "h", total: "Total", slotTaken: "Ce créneau vient d'être pris, choisis-en un autre.",
     s_Requested: "En attente", s_Accepted: "Acceptée", s_EnRoute: "En route", s_Arrived: "Arrivé", s_InProgress: "En cours", s_Completed: "Terminée", s_Confirmed: "Confirmée", s_Settled: "Réglée", s_Cancelled: "Annulée", s_Declined: "Refusée", s_Disputed: "Litige", s_Expired: "Expirée", s_Refunded: "Remboursée", s_Offered: "Proposée" },
   ar: { tag: "حيّك، فريقك.", phone: "رقم الهاتف", send: "أرسل الرمز", code: "رمز من 6 أرقام", verify: "تأكيد", devCode: "رمز تجريبي", bad: "رقم مغربي غير صالح", wrong: "الرمز خاطئ أو منتهي", net: "تعذّر الاتصال",
     hello: "مرحبا 👋", find: "ماذا تحتاج؟", search: "ابحث عن خدمة…", all: "الكل", near: "قريب منك", empty: "لا خدمات.", book: "احجز", booked: "تم إرسال الطلب ✔", cash: "الدفع نقدا عند الانتهاء", mad: "درهم", km: "كلم", verified: "موثّق", avail: "متاح هذا الأسبوع",
@@ -24,14 +25,14 @@ const T: Record<Lang, Record<string, string>> = {
     language: "اللغة", logout: "تسجيل الخروج", account: "الحساب", back: "رجوع", reviews: "تقييم", jobs: "مهمة", c_cleaning: "تنظيف", c_diy: "إصلاحات", c_garden: "حديقة", c_tutoring: "دروس", c_errands: "مشتريات", c_rides: "نقل", c_pets: "حيوانات", c_lending: "إعارة",
     urgent: "تحتاج مساعدة الآن؟", urgentHint: "نبحث عن أقرب مقدّم خدمة مباشرة.", requestNow: "ابدأ الطلب", urgentSent: "جارٍ البحث… ✔", price: "السعر (درهم)", searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", anon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.",
     report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", underReview: "قيد المراجعة من فريقنا",
-    chooseTime: "اختر موعدا", noSlots: "لا توفر هذا الأسبوع", durationLabel: "المدة", hours: "س", total: "المجموع", slotTaken: "تم حجز هذا الموعد للتو، اختر موعدا آخر.",
+    reschedule: "تغيير الموعد", rescheduled: "تم تغيير الموعد ✔", chooseTime: "اختر موعدا", noSlots: "لا توفر هذا الأسبوع", durationLabel: "المدة", hours: "س", total: "المجموع", slotTaken: "تم حجز هذا الموعد للتو، اختر موعدا آخر.",
     s_Requested: "قيد الانتظار", s_Accepted: "مقبولة", s_EnRoute: "في الطريق", s_Arrived: "وصل", s_InProgress: "قيد التنفيذ", s_Completed: "منتهية", s_Confirmed: "مؤكدة", s_Settled: "مسوّاة", s_Cancelled: "ملغاة", s_Declined: "مرفوضة", s_Disputed: "نزاع", s_Expired: "منتهية", s_Refunded: "مستردة", s_Offered: "مقترحة" },
   da: {} as Record<string, string>,
 };
 T.da = { ...T.ar, tag: "حومتك، فريقك.", send: "صيفط ليا الكود", code: "كود من 6 أرقام", wrong: "الكود غالط ولا سالا", hello: "السلام 👋", find: "شنو محتاج؟", search: "قلّب على خدمة…", all: "كلشي", cash: "خلّص كاش فالأخير", booked: "تصيفطات الطلب ✔", c_diy: "بريكولاج", c_cleaning: "نقاء", c_garden: "جردة", c_errands: "كورسات", c_lending: "تسليف", noActive: "ما كاين حتى حجز جاري", logout: "خروج", s_Requested: "كيتسنّى", s_EnRoute: "فالطريق", s_Completed: "سالات" };
 
 interface Hit { id: string; title: string; categoryId: string; priceCentimes: number; pricingModel?: string; distanceM: number; rating: number; jobs: number; tier: number; availableThisWeek: boolean; providerId: string }
-interface Booking { id: string; state: string; mode?: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number }
+interface Booking { id: string; offerId?: string | null; durationMin?: number; localDate?: string | null; startMin?: number | null; state: string; mode?: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number }
 interface Live { lat: number; lng: number; at: number }
 const distM = (aLat: number, aLng: number, bLat: number, bLng: number) => { const r = (d: number) => (d * Math.PI) / 180, R = 6371000, dLat = r(bLat - aLat), dLng = r(bLng - aLng); const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(h))); };
 const etaMin = (m: number) => Math.max(1, Math.round(m / 333));
@@ -138,16 +139,12 @@ function UrgentBanner() {
 
 function Explore() {
   const tr = useTr(); const { lang } = useI18n(); const toast = useToast(); const [q, setQ] = useState(""); const [cat, setCat] = useState("all"); const [hits, setHits] = useState<Hit[] | null>(null); const [sel, setSel] = useState<Hit | null>(null); const [busy, setBusy] = useState(false);
-  const [dur, setDur] = useState(60); const [slots, setSlots] = useState<{ date: string; startMin: number }[] | null>(null); const [slot, setSlot] = useState<{ date: string; startMin: number } | null>(null); const [dayIdx, setDayIdx] = useState(0);
-  useEffect(() => { setSlot(null); setSlots(null); setDayIdx(0); if (!sel) return; const from = new Date().toISOString().slice(0, 10); api(`/v1/offers/${sel.id}/slots?from=${from}&days=7&durationMin=${dur}`, { auth: false }).then(setSlots).catch(() => setSlots([])); }, [sel?.id, dur]); // eslint-disable-line
+  const [dur, setDur] = useState(60); const [slot, setSlot] = useState<Slot | null>(null);
   useEffect(() => {
     const h = setTimeout(async () => { try { const p = new URLSearchParams({ lat: String(CENTER.lat), lng: String(CENTER.lng), radiusM: "10000", limit: "30" }); if (cat !== "all") p.set("categoryId", cat); if (q.trim()) p.set("q", q.trim()); setHits(await api(`/v1/search?${p}`, { auth: false })); } catch { setHits([]); } }, 250);
     return () => clearTimeout(h);
   }, [q, cat]);
   const book = async () => { if (!sel || !slot) return; setBusy(true); try { await post("/v1/bookings", { mode: "catalogue", offerId: sel.id, slot, durationMin: dur, paymentMethod: "cash" }); toast(tr("booked")); setSel(null); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); setSlot(null); setDur((d) => d); } finally { setBusy(false); } };
-  const days = [...new Set((slots ?? []).map((s) => s.date))]; const daySlots = (slots ?? []).filter((s) => s.date === days[dayIdx]);
-  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  const dayLabel = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString(lang === "fr" ? "fr-MA" : "ar-MA", { weekday: "short", day: "numeric" });
   const hourly = sel ? (sel as Hit & { pricingModel?: string }).pricingModel === "hourly" : false;
   const price = sel ? (hourly ? Math.round((sel.priceCentimes * dur) / 60) : sel.priceCentimes) : 0;
   return (
@@ -179,12 +176,7 @@ function Explore() {
           <div className="mt-4 grid grid-cols-3 gap-2.5 text-center">{[[tr("reviews"), `⭐ ${sel.rating.toFixed(1)}`], [tr("jobs"), String(sel.jobs)], ["📍", `${(sel.distanceM / 1000).toFixed(1)} ${tr("km")}`]].map(([l, v]) => <Card key={l} className="py-3"><div className="text-[11.5px] text-ops-muted">{l}</div><div className="mt-0.5 font-bold">{v}</div></Card>)}</div>
           {hourly && <div className="mt-4 flex items-center gap-2"><span className="text-sm text-ops-muted">{tr("durationLabel")}</span>{[60, 120, 180].map((d) => <button key={d} onClick={() => setDur(d)} className={cn("rounded-full border px-3 py-1 text-sm font-semibold transition", dur === d ? "border-ops-accent bg-ops-accent text-ops-accent-fg" : "border-ops-border bg-ops-card")}>{d / 60}{tr("hours")}</button>)}</div>}
           <div className="mt-4 text-sm font-semibold">{tr("chooseTime")}</div>
-          {!slots ? <Skeleton className="mt-2 h-16" /> : days.length === 0 ? <p className="mt-2 rounded-xl bg-ops-hover p-3 text-sm text-ops-muted">{tr("noSlots")}</p> : (
-            <>
-              <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto">{days.map((d, i) => <button key={d} onClick={() => { setDayIdx(i); setSlot(null); }} className={cn("shrink-0 rounded-xl border px-3 py-1.5 text-sm font-semibold transition", dayIdx === i ? "border-ops-accent bg-ops-accent/10 text-ops-accent" : "border-ops-border bg-ops-card")}>{dayLabel(d)}</button>)}</div>
-              <div className="mt-2 flex flex-wrap gap-2">{daySlots.map((s) => <button key={s.startMin} onClick={() => setSlot(s)} aria-pressed={slot?.startMin === s.startMin && slot?.date === s.date} className={cn("rounded-lg border px-3 py-1.5 text-sm font-semibold tabular-nums transition", slot?.startMin === s.startMin && slot?.date === s.date ? "border-ops-accent bg-ops-accent text-ops-accent-fg" : "border-ops-border bg-ops-card hover:bg-ops-hover")}>{hhmm(s.startMin)}</button>)}</div>
-            </>
-          )}
+          <SlotPicker offerId={sel.id} durationMin={dur} value={slot} onChange={setSlot} emptyText={tr("noSlots")} />
           <Card className="mt-3 divide-y divide-ops-border"><div className="flex justify-between px-4 py-3"><span className="text-ops-muted">{tr("total")}</span><b>{price / 100} {tr("mad")}</b></div><div className="flex justify-between px-4 py-3"><span className="text-ops-muted">💵</span><b>{tr("cash")}</b></div></Card>
           <OBtn variant="primary" className="mt-5 h-12 w-full rounded-full text-base" disabled={busy || !slot} onClick={book}><CalendarCheck size={18} />{tr("book")}</OBtn>
         </motion.div></>)}</AnimatePresence>
@@ -193,7 +185,7 @@ function Explore() {
 }
 
 function Bookings() {
-  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active"); const [report, setReport] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
+  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active"); const [resched, setResched] = useState<Booking | null>(null); const [newSlot, setNewSlot] = useState<Slot | null>(null); const [report, setReport] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
   const load = useCallback(async () => { try { setItems(await api("/v1/bookings")); } catch { setItems([]); } }, []);
   useEffect(() => { load(); const i = setInterval(load, 10000); return () => clearInterval(i); }, [load]);
   const live = useLive((items ?? []).map((b) => b.id), load);
@@ -209,6 +201,7 @@ function Bookings() {
           <Card key={b.id} className="cursor-pointer p-4 transition hover:shadow-md" onClick={() => setDetail(b.id)}>
             <div className="flex items-center justify-between"><div><div className="font-bold">#{b.id.slice(0, 8)}</div><div className="mt-0.5 text-xs text-ops-muted">{b.totalCentimes / 100} {tr("mad")} · 💵</div></div><Pill tone={stateTone(b.state)} dot>{tr("s_" + b.state)}</Pill></div>
             <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+              {["Requested", "Accepted"].includes(b.state) && b.offerId && b.durationMin && <OBtn size="sm" onClick={() => { setNewSlot(null); setResched(b); }}>{tr("reschedule")}</OBtn>}
               {["Requested", "Accepted"].includes(b.state) && <OBtn size="sm" onClick={() => run(b.id, "cancel")}>{tr("cancel")}</OBtn>}
               {b.state === "Completed" && <OBtn size="sm" variant="primary" onClick={() => run(b.id, "confirm")}>{tr("confirm")}</OBtn>}
               {b.state === "Completed" && <OBtn size="sm" onClick={() => { setReportText(""); setReport(b); }}>⚠️ {tr("report")}</OBtn>}
@@ -220,6 +213,13 @@ function Bookings() {
         {items && shown.length === 0 && <Empty icon={<Receipt size={18} />} title={seg === "active" ? tr("noActive") : tr("noPast")} />}
       </div>
       <AnimatePresence>{detail && <BookingDetail key={detail} booking={(items ?? []).find((b) => b.id === detail) ?? null} live={live[detail]} onClose={() => setDetail(null)} onCancel={async (id) => { await run(id, "cancel"); setDetail(null); }} />}</AnimatePresence>
+      <AnimatePresence>{resched && (<>
+        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setResched(null)} />
+        <motion.div role="dialog" aria-label={tr("reschedule")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }}>
+          <h3 className="text-xl font-bold">{tr("reschedule")}</h3>
+          <SlotPicker offerId={resched.offerId!} durationMin={resched.durationMin!} value={newSlot} onChange={setNewSlot} emptyText={tr("noSlots")} />
+          <OBtn variant="primary" className="mt-5 h-12 w-full rounded-full text-base" disabled={!newSlot} onClick={async () => { try { await post(`/v1/bookings/${resched.id}/reschedule`, { slot: newSlot }); toast(tr("rescheduled")); load(); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); } setResched(null); }}>{tr("reschedule")}</OBtn>
+        </motion.div></>)}</AnimatePresence>
       <AnimatePresence>{report && (<>
         <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReport(null)} />
         <motion.div role="dialog" aria-label={tr("reportTitle")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }}>

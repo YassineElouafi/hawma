@@ -33,6 +33,16 @@ export class BookingsController {
     const total = offer.pricingModel === "hourly" ? Math.round((offer.basePriceCentimes * v.durationMin) / 60) : offer.basePriceCentimes;
     return this.svc.create(uid, { mode: "catalogue", providerId: offer.providerId, offerId: offer.id, categoryId: offer.categoryId, slot: v.slot, durationMin: v.durationMin, totalCentimes: total, paymentMethod: v.paymentMethod, lat: offer.lat, lng: offer.lng });
   }
+  /** Move a booking to another free slot (same duration). Availability is re-validated server-side. */
+  @Post(":id/reschedule") async reschedule(@Headers("authorization") h: string, @Param("id") id: string, @Body() body: unknown) {
+    const uid = await this.uid(h); const slot = z.object({ slot: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), startMin: z.number().int().min(0).max(1439) }) }).parse(body).slot;
+    const b = await this.svc.get(id, uid);
+    if (b.customerId !== uid) throw new UnprocessableEntityException("only the customer can reschedule");
+    if (!b.offerId || !b.durationMin) throw new UnprocessableEntityException("this booking has no scheduled time");
+    const free = await this.catalogue.slots(b.offerId, slot.date, 1, b.durationMin);
+    if (!free.some((s) => s.startMin === slot.startMin)) throw new ConflictException("that time slot is not available");
+    return this.svc.reschedule(id, uid, slot);
+  }
   @Get() async list(@Headers("authorization") h: string) { return this.svc.list(await this.uid(h)); }
   /** Who is coming? Public-safe summary of the assigned provider, visible to the booking's participants only (no phone number). */
   @Get(":id/provider") async provider(@Headers("authorization") h: string, @Param("id") id: string) {

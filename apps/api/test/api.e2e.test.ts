@@ -238,3 +238,30 @@ describe("scheduled catalogue bookings", () => {
     expect((await book(c2.accessToken, { date: day, startMin: 540 })).statusCode).toBe(201);
   });
 });
+
+describe("rescheduling and availability", () => {
+  it("customer moves a booking to another free slot; conflicts, strangers and started jobs are refused", async () => {
+    const prov = await login("0601818181"), c1 = await login("0602828282"), c2 = await login("0603838383"), x = await login("0604848484");
+    OVERRIDES.catalogueRepo.stats.set(prov.userId, { rating: 4.8, jobs: 10, tier: 1, cancelRate: 0, responseMin: 5, status: "active" });
+    const offer = (await post("/v1/offers", { categoryId: "tutoring", title: "Maths 2", lat: 33.58, lng: -7.63, basePriceCentimes: 10000, pricingModel: "hourly" }, prov.accessToken)).json();
+    const rules = [{ weekday: 2, startMin: 540, endMin: 900 }];
+    expect((await app.inject({ method: "PUT", url: "/v1/me/availability", payload: { rules }, headers: { authorization: `Bearer ${prov.accessToken}` } })).statusCode).toBe(204);
+    expect((await app.inject({ url: "/v1/me/availability", headers: { authorization: `Bearer ${prov.accessToken}` } })).json()).toEqual(rules);
+    const day = "2026-11-24"; const slot = (startMin: number) => ({ date: day, startMin });
+    const mine = (await post("/v1/bookings", { mode: "catalogue", offerId: offer.id, slot: slot(540), durationMin: 60 }, c1.accessToken)).json();
+    const other = (await post("/v1/bookings", { mode: "catalogue", offerId: offer.id, slot: slot(660), durationMin: 60 }, c2.accessToken)).json();
+    const resched = (token: string, id: string, s: object) => post(`/v1/bookings/${id}/reschedule`, { slot: s }, token);
+    expect((await resched(x.accessToken, mine.id, slot(780))).statusCode).toBe(403);                                  // stranger
+    expect((await resched(prov.accessToken, mine.id, slot(780))).statusCode).toBe(422);                               // provider cannot move the customer's booking
+    expect((await resched(c1.accessToken, mine.id, slot(660))).statusCode).toBe(409);                                 // taken by c2
+    expect((await resched(c1.accessToken, mine.id, slot(480))).statusCode).toBe(409);                                 // outside availability
+    const ok = await resched(c1.accessToken, mine.id, slot(780)); expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ startMin: 780, localDate: day, state: "Requested", scheduledAt: "2026-11-24T12:00:00.000Z" });
+    expect(ok.json().events.at(-1)).toMatchObject({ type: "booking.rescheduled", command: "reschedule" });
+    expect((await post("/v1/bookings", { mode: "catalogue", offerId: offer.id, slot: slot(540), durationMin: 60 }, x.accessToken)).statusCode).toBe(201);   // the old slot is free again
+    await post(`/v1/bookings/${other.id}/accept`, undefined, prov.accessToken); await post(`/v1/bookings/${other.id}/start-trip`, undefined, prov.accessToken);
+    expect((await resched(c2.accessToken, other.id, slot(840))).statusCode).toBe(422);                                // already started
+    const urgent = (await post("/v1/bookings", { mode: "dispatch", totalCentimes: 1000 }, c1.accessToken)).json();
+    expect((await resched(c1.accessToken, urgent.id, slot(840))).statusCode).toBe(422);                               // no scheduled time
+  });
+});

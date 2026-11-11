@@ -62,9 +62,12 @@ export class PgBookingRepo implements BookingRepo {
   }
 
   async save(b: BookingRecord, expectedVersion: number) {
+    try { await this.saveTx(b, expectedVersion); } catch (e) { const c = e as { code?: string; cause?: { code?: string } }; const code = c.code ?? c.cause?.code; if (code === "23P01" || code === "40P01") throw new ConflictException("that time slot is no longer available"); throw e; }
+  }
+  private async saveTx(b: BookingRecord, expectedVersion: number) {
     await this.db.transaction(async (tx) => {
       const upd = await tx.update(s.bookings)
-        .set({ state: b.state, providerId: b.providerId, version: b.version, updatedAt: new Date() })
+        .set({ state: b.state, providerId: b.providerId, version: b.version, updatedAt: new Date(), localDate: b.localDate ?? null, startMin: b.startMin ?? null, scheduledAt: b.scheduledAt ? new Date(b.scheduledAt) : null, slotFrom: b.slotFrom ?? null, slotTo: b.slotTo ?? null })
         .where(and(eq(s.bookings.id, b.id), eq(s.bookings.version, expectedVersion)))
         .returning({ id: s.bookings.id });
       if (upd.length === 0) throw new ConflictException("booking was modified concurrently");

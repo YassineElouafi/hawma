@@ -13,6 +13,7 @@ export interface BookingRecord {
 export interface BookingStats { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[] }
 export interface BookingRepo { stats(days: number): Promise<BookingStats>; listAll(state: string | undefined, limit: number): Promise<BookingRecord[]>; listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
 
+const TERMINAL_STATES = ["Declined", "Expired", "Cancelled", "Refunded"];
 /** Test/dev repo. Production uses Drizzle with optimistic locking on booking.version + outbox write in the same tx. */
 export class MemoryBookingRepo implements BookingRepo {
   private m = new Map<string, BookingRecord>();
@@ -35,6 +36,7 @@ export class MemoryBookingRepo implements BookingRepo {
   async save(b: BookingRecord, expected: number) {
     const cur = this.m.get(b.id);
     if (!cur || cur.version !== expected) throw new ConflictException("booking was modified concurrently");
+    if (b.providerId && b.slotFrom != null && b.slotTo != null && !TERMINAL_STATES.includes(b.state) && [...this.m.values()].some((x) => x.id !== b.id && x.providerId === b.providerId && x.slotFrom != null && x.slotTo != null && !TERMINAL_STATES.includes(x.state) && b.slotFrom! < x.slotTo! && x.slotFrom! < b.slotTo!)) throw new ConflictException("that time slot is no longer available");
     this.m.set(b.id, structuredClone(b));
   }
 }
@@ -93,6 +95,22 @@ export class BookingsService {
   stats(days = 14) { return this.repo.stats(days); }
   async listAll(state: string | undefined, limit = 100) { return this.repo.listAll(state, limit); }
   async getAny(id: string) { const b = await this.repo.get(id); if (!b) throw new NotFoundException(); return b; }
+  /**
+   * Customer moves a not-yet-started booking to another slot. The slot must already have been validated against the provider's
+   * availability by the caller; the no-overlap constraint (DB / memory repo) is the final arbiter. Same state, new event.
+   */
+  async reschedule(id: string, userId: string, slot: { date: string; startMin: number }) {
+    const b = await this.repo.get(id); if (!b) throw new NotFoundException();
+    if (b.customerId !== userId) throw new ForbiddenException("only the customer can reschedule");
+    if (!["Requested", "Accepted"].includes(b.state)) throw new UnprocessableEntityException("only bookings that have not started can be rescheduled");
+    if (b.slotFrom == null || !b.durationMin) throw new UnprocessableEntityException("this booking has no scheduled time");
+    const expected = b.version, from = { date: b.localDate, startMin: b.startMin };
+    Object.assign(b, { localDate: slot.date, startMin: slot.startMin, scheduledAt: localToUtc(slot.date, slot.startMin).toISOString(), slotFrom: slotAbs(slot.date, slot.startMin), slotTo: slotAbs(slot.date, slot.startMin) + b.durationMin, version: b.version + 1 });
+    const event: BookingEvent = { type: "booking.rescheduled", from: b.state, to: b.state, command: "reschedule", actor: "customer", at: new Date(this.now()).toISOString() };
+    b.events.push(event); await this.repo.save(b, expected); this.published.push(event); this.afterEvent?.(b, event);
+    void from; return b;
+  }
+
   /** System-initiated transition (dispatch expiry etc.): no participant check. */
   async systemCommand(id: string, command: Command) {
     const b = await this.repo.get(id); if (!b) throw new NotFoundException();

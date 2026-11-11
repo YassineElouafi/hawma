@@ -145,3 +145,21 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("rescheduling on real Postgres", () => {
+  it("persists the new slot, frees the old one, and the exclusion constraint guards the move", async () => {
+    const client = postgres(url!, { max: 6 }); const db2 = drizzle(client); const svc = new BookingsService(new PgBookingRepo(db2)); const prov = randomUUID();
+    const mk = (startMin: number) => svc.create(randomUUID(), { mode: "catalogue", providerId: prov, totalCentimes: 100, paymentMethod: "cash", slot: { date: "2027-05-04", startMin }, durationMin: 60 });
+    const a = await mk(540), b = await mk(660);
+    await expect(svc.reschedule(a.id, a.customerId, { date: "2027-05-04", startMin: 660 })).rejects.toThrow(/no longer available/);   // onto b
+    await expect(svc.reschedule(a.id, a.customerId, { date: "2027-05-04", startMin: 690 })).rejects.toThrow(/no longer available/);   // overlaps b
+    const moved = await svc.reschedule(a.id, a.customerId, { date: "2027-05-04", startMin: 780 });
+    expect(moved.startMin).toBe(780);
+    const [row] = await client`select local_date, start_min, slot_from, slot_to, scheduled_at, version from booking.booking where id = ${a.id}`;
+    expect(row).toMatchObject({ local_date: "2027-05-04", start_min: 780 }); expect(row.slot_to - row.slot_from).toBe(60); expect(row.version).toBe(1);
+    await mk(540);                                                                                          // old slot is free
+    await expect(svc.reschedule(b.id, randomUUID(), { date: "2027-05-04", startMin: 900 })).rejects.toThrow(/only the customer/);
+    const [{ n }] = await client`select count(*)::int n from platform.outbox where aggregate_id = ${a.id} and type = 'booking.rescheduled'`; expect(n).toBe(1);
+    await client.end();
+  });
+});

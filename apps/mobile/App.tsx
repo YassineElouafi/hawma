@@ -9,15 +9,16 @@ import { DEFAULT_CENTER, WS_URL } from "./src/config";
 import { DICT, LANGS, type Key, type Lang } from "./src/i18n";
 import { C, R, shadow } from "./src/theme";
 import { distanceM, etaMin } from "./src/geo";
+import { SlotPicker, type Slot } from "./src/slotpicker";
 import { Avatar, Badge, Button, Card, CardSkeleton, Divider, Empty, FadeIn, Field, Row, SectionTitle, Segmented, Sheet, Stepper, stateTone } from "./src/ui";
 
 I18nManager.allowRTL(false); // direction is handled per-view so switching language needs no restart
 
 import { CATS, LangCtx, emojiOf, useT } from "./src/lang";
-import { ProviderOffers, ProviderToday } from "./src/provider";
+import { ProviderOffers, ProviderSchedule, ProviderToday } from "./src/provider";
 
 interface Hit { id: string; title: string; categoryId: string; priceCentimes: number; pricingModel: string; distanceM: number; rating: number; jobs: number; tier: number; availableThisWeek: boolean; providerId: string }
-interface Booking { id: string; state: string; mode: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number; createdAt?: string }
+interface Booking { id: string; offerId?: string | null; durationMin?: number; state: string; mode: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number; createdAt?: string }
 interface Live { lat: number; lng: number; at: number }
 const ACTIVE = ["Requested", "Offered", "Accepted", "EnRoute", "Arrived", "InProgress"];
 
@@ -83,7 +84,7 @@ function Login({ onDone }: { onDone: () => void }) {
 }
 
 /* ---------- main ---------- */
-type Tab = "home" | "bookings" | "profile" | "today" | "offers";
+type Tab = "home" | "bookings" | "profile" | "today" | "offers" | "schedule";
 function Main({ onLogout }: { onLogout: () => void }) {
   const { t } = useT(); const ins = useSafeAreaInsets();
   const [mode, setMode] = useState<"customer" | "provider">("customer");
@@ -91,12 +92,13 @@ function Main({ onLogout }: { onLogout: () => void }) {
   const switchMode = (m: "customer" | "provider") => { setMode(m); SecureStore.setItemAsync("mode", m); setTab(m === "provider" ? "today" : "home"); };
   const [tab, setTab] = useState<Tab>("home"); const [where, setWhere] = useState(DEFAULT_CENTER); const [located, setLocated] = useState(false);
   const useMyLocation = async () => { const p = await Location.requestForegroundPermissionsAsync(); if (p.status !== "granted") return; const pos = await Location.getCurrentPositionAsync({}); setWhere({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocated(true); };
-  const tabs: [Tab, string, string][] = mode === "provider" ? [["today", "📅", t("today")], ["offers", "🛠️", t("offers")], ["profile", "👤", t("profile")]] : [["home", "🏠", t("home")], ["bookings", "🧾", t("bookings")], ["profile", "👤", t("profile")]];
+  const tabs: [Tab, string, string][] = mode === "provider" ? [["today", "📅", t("today")], ["schedule", "🕘", t("schedule")], ["offers", "🛠️", t("offers")], ["profile", "👤", t("profile")]] : [["home", "🏠", t("home")], ["bookings", "🧾", t("bookings")], ["profile", "👤", t("profile")]];
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1 }}>
         {tab === "today" && <ProviderToday insetTop={ins.top} />}
         {tab === "offers" && <ProviderOffers insetTop={ins.top} />}
+        {tab === "schedule" && <ProviderSchedule insetTop={ins.top} />}
         {tab === "home" && <Home where={where} located={located} insetTop={ins.top} />}
         {tab === "bookings" && <Bookings insetTop={ins.top} />}
         {tab === "profile" && <Profile insetTop={ins.top} mode={mode} onSwitch={switchMode} onLogout={onLogout} located={located} useMyLocation={useMyLocation} />}
@@ -202,11 +204,7 @@ function HitCard({ h, onPress }: { h: Hit; onPress: () => void }) {
 
 function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
   const { t } = useT(); const [busy, setBusy] = useState(false);
-  const [dur, setDur] = useState(60); const [slots, setSlots] = useState<{ date: string; startMin: number }[] | null>(null); const [slot, setSlot] = useState<{ date: string; startMin: number } | null>(null); const [dayIdx, setDayIdx] = useState(0);
-  useEffect(() => { setSlot(null); setSlots(null); setDayIdx(0); if (!hit) return; const from = new Date().toISOString().slice(0, 10); api(`/v1/offers/${hit.id}/slots?from=${from}&days=7&durationMin=${dur}`, { auth: false }).then(setSlots).catch(() => setSlots([])); }, [hit?.id, dur]); // eslint-disable-line
-  const days = [...new Set((slots ?? []).map((s) => s.date))]; const daySlots = (slots ?? []).filter((s) => s.date === days[dayIdx]);
-  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  const dayLabel = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+  const [dur, setDur] = useState(60); const [slot, setSlot] = useState<Slot | null>(null);
   const hourly = hit?.pricingModel === "hourly"; const price = hit ? (hourly ? Math.round((hit.priceCentimes * dur) / 60) : hit.priceCentimes) : 0;
   const book = async () => {
     if (!hit || !slot) return; setBusy(true);
@@ -227,9 +225,7 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
         </View>
         {hourly && <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 }}><Text style={{ color: C.mute, fontWeight: "600" }}>{t("durationLabel")}</Text>{[60, 120, 180].map((d) => <Pressable key={d} onPress={() => setDur(d)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.pill, backgroundColor: dur === d ? C.emerald : C.card, borderWidth: 1, borderColor: dur === d ? C.emerald : C.border }}><Text style={{ fontWeight: "700", color: dur === d ? "#fff" : C.ink }}>{d / 60}{t("hoursShort")}</Text></Pressable>)}</View>}
         <Text style={{ fontWeight: "800", color: C.ink, marginTop: 16, marginBottom: 8 }}>{t("chooseTime")}</Text>
-        {!slots ? <CardSkeleton /> : days.length === 0 ? <Card><Text style={{ color: C.mute }}>{t("noSlots")}</Text></Card> : <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>{days.map((d, i) => <Pressable key={d} onPress={() => { setDayIdx(i); setSlot(null); }} style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.md, backgroundColor: dayIdx === i ? C.emeraldSoft : C.card, borderWidth: 1.5, borderColor: dayIdx === i ? C.emerald2 : C.border }}><Text style={{ fontWeight: "700", color: dayIdx === i ? C.emerald : C.ink }}>{dayLabel(d)}</Text></Pressable>)}</ScrollView>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>{daySlots.map((s) => { const on = slot?.startMin === s.startMin && slot?.date === s.date; return <Pressable key={s.startMin} onPress={() => setSlot(s)} style={{ paddingHorizontal: 14, paddingVertical: 9, borderRadius: R.md, backgroundColor: on ? C.emerald : C.card, borderWidth: 1, borderColor: on ? C.emerald : C.border }}><Text style={{ fontWeight: "700", color: on ? "#fff" : C.ink }}>{hhmm(s.startMin)}</Text></Pressable>; })}</View></>}
+        {hit && <SlotPicker offerId={hit.id} durationMin={dur} value={slot} onChange={setSlot} emptyText={t("noSlots")} />}
         <Card style={{ marginTop: 12 }}>
           <Row emoji="💰" label={t("totalLabel")} value={price ? `${price / 100} ${t("mad")}` : t("free")} /><Divider />
           <Row emoji="💵" label={t("payment")} value={t("cash")} /><Divider />
@@ -245,7 +241,7 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
 
 /* ---------- bookings ---------- */
 function Bookings({ insetTop }: { insetTop: number }) {
-  const { t } = useT(); const [reportFor, setReportFor] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [reporting, setReporting] = useState(false); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, Live>>({}); const [detail, setDetail] = useState<Booking | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
+  const { t } = useT(); const [reschedFor, setReschedFor] = useState<Booking | null>(null); const [newSlot, setNewSlot] = useState<Slot | null>(null); const [reportFor, setReportFor] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [reporting, setReporting] = useState(false); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, Live>>({}); const [detail, setDetail] = useState<Booking | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
   const load = useCallback(async () => { setBusy(true); try { setItems(await api("/v1/bookings")); } catch { setItems([]); } finally { setBusy(false); } }, []);
   useEffect(() => { load(); }, [load]);
   const ws = useRef<WebSocket | null>(null);
@@ -272,6 +268,7 @@ function Bookings({ insetTop }: { insetTop: number }) {
                 <Badge label={t(`s_${item.state}` as Key)} t={stateTone(item.state)} dot />
               </View>
               {ACTIVE.includes(item.state) && <Stepper state={item.state} />}
+              {["Requested", "Accepted"].includes(item.state) && item.offerId && item.durationMin && <Button label={`🗓️ ${t("reschedule")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setNewSlot(null); setReschedFor(item); }} />}
               {["Requested", "Accepted"].includes(item.state) && <Button label={t("cancelBooking")} variant="outline" small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/cancel`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {item.state === "Completed" && <Button label={`⚠️ ${t("report")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setReportText(""); setReportFor(item); }} />}
               {item.state === "Disputed" && <Text style={{ color: C.amber, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>⏳ {t("s_Disputed_hint")}</Text>}
@@ -282,6 +279,15 @@ function Bookings({ insetTop }: { insetTop: number }) {
           </FadeIn>
         )} />
       <BookingDetail booking={detail ? (items ?? []).find((b) => b.id === detail.id) ?? detail : null} live={detail ? live[`booking:${detail.id}`] : undefined} onClose={() => setDetail(null)} onCancel={async (id) => { try { await post(`/v1/bookings/${id}/cancel`); setDetail(null); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />
+      <Sheet visible={!!reschedFor} onClose={() => setReschedFor(null)}>
+        <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, marginBottom: 10 }}>🗓️ {t("reschedule")}</Text>
+        {reschedFor?.offerId && reschedFor.durationMin ? <SlotPicker offerId={reschedFor.offerId} durationMin={reschedFor.durationMin} value={newSlot} onChange={setNewSlot} emptyText={t("noSlots")} /> : null}
+        <Button label={t("reschedule")} disabled={!newSlot} style={{ marginTop: 16 }} onPress={async () => {
+          if (!reschedFor || !newSlot) return;
+          try { await post(`/v1/bookings/${reschedFor.id}/reschedule`, { slot: newSlot }); setReschedFor(null); Alert.alert(t("rescheduled")); load(); }
+          catch (e) { Alert.alert(e instanceof ApiError && e.status === 409 ? t("slotTaken") : e instanceof ApiError ? e.message : t("network")); }
+        }} />
+      </Sheet>
       <Sheet visible={!!reportFor} onClose={() => setReportFor(null)}>
         <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink }}>⚠️ {t("reportTitle")}</Text><Text style={{ color: C.mute, marginTop: 6, lineHeight: 20 }}>{t("reportHint")}</Text>
         <Field label={t("report")} value={reportText} onChangeText={setReportText} multiline style={{ minHeight: 110, fontSize: 15 }} />

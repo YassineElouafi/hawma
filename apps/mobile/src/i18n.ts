@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  reschedule: "Changer l'horaire", rescheduled: "Horaire modifié ✔", schedule: "Horaires", scheduleHint: "Choisis les jours et heures où tu acceptes des réservations.", saveSchedule: "Enregistrer", scheduleSaved: "Horaires enregistrés ✔", closed: "Fermé", d0: "Dimanche", d1: "Lundi", d2: "Mardi", d3: "Mercredi", d4: "Jeudi", d5: "Vendredi", d6: "Samedi",
   chooseTime: "Choisis un créneau", noSlots: "Aucune disponibilité cette semaine", durationLabel: "Durée", hoursShort: "h", totalLabel: "Total", slotTaken: "Ce créneau vient d'être pris, choisis-en un autre.",
   report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Le paiement est suspendu le temps de l'examen.", s_Disputed_hint: "En cours d'examen par notre équipe",
   earnings: "Mes revenus", netEarnings: "Net après frais", feeOwed: "Frais dus à Hawma", feeWarn: "Au-delà de 300 MAD de frais, tu ne reçois plus de missions urgentes jusqu'au règlement.",
@@ -23,6 +24,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  reschedule: "تغيير الموعد", rescheduled: "تم تغيير الموعد ✔", schedule: "الأوقات", scheduleHint: "اختر الأيام والساعات التي تقبل فيها الحجوزات.", saveSchedule: "حفظ", scheduleSaved: "تم حفظ الأوقات ✔", closed: "مغلق", d0: "الأحد", d1: "الاثنين", d2: "الثلاثاء", d3: "الأربعاء", d4: "الخميس", d5: "الجمعة", d6: "السبت",
   chooseTime: "اختر موعدا", noSlots: "لا توفر هذا الأسبوع", durationLabel: "المدة", hoursShort: "س", totalLabel: "المجموع", slotTaken: "تم حجز هذا الموعد للتو، اختر موعدا آخر.",
   report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", s_Disputed_hint: "قيد المراجعة من فريقنا",
   earnings: "أرباحي", netEarnings: "الصافي بعد الرسوم", feeOwed: "رسوم مستحقة لحومة", feeWarn: "إذا تجاوزت الرسوم 300 درهم فلن تصلك مهام عاجلة حتى تسوّيها.",
@@ -45,6 +47,7 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  reschedule: "بدّل الموعد", rescheduled: "تبدّل الموعد ✔", schedule: "الأوقات", scheduleHint: "اختار الأيام والساعات اللي كتقبل فيها الحجوزات.", saveSchedule: "حفظ", scheduleSaved: "تحفظو الأوقات ✔", closed: "سالي",
   chooseTime: "اختار الموعد", noSlots: "ما كاين حتى وقت هاد السيمانة", slotTaken: "هاد الموعد تحجز دابا، اختار واحد آخر.",
   report: "بلّغ على مشكل", reportTitle: "شنو وقع؟", reportHint: "وصف المشكل فشي جمل. الفريق ديالنا كيراجع كل بلاغ.", reportSend: "صيفط البلاغ", reportSent: "تصيفط البلاغ ✔ الخلاص تّوقف حتى تتراجع.",
   earnings: "الأرباح ديالي", netEarnings: "الصافي من بعد الرسوم", feeOwed: "الرسوم اللي عليك لحومة", feeWarn: "إلا فاتو الرسوم 300 درهم ما غاديش توصلك خدمات مستعجلة حتى تخلّص.",
