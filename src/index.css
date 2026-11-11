@@ -70,12 +70,14 @@ body { @apply bg-background text-foreground font-sans antialiased; }
   --ops-card: oklch(100% 0 0);
   --ops-border: oklch(93% 0.004 90);
   --ops-fg: oklch(21% 0.01 170);
-  --ops-muted: oklch(52% 0.01 170);
+  --ops-muted: oklch(46% 0.012 170);
   --ops-hover: oklch(96% 0.004 90);
   --ops-accent: oklch(42% 0.075 170);
   --ops-accent-fg: oklch(98% 0 0);
   --ops-ring: oklch(42% 0.075 170 / .25);
   --ops-green: oklch(62% 0.15 155); --ops-red: oklch(60% 0.19 27); --ops-amber: oklch(76% 0.15 75); --ops-blue: oklch(60% 0.17 255); --ops-violet: oklch(58% 0.2 295);
+  /* text-safe variants (WCAG AA on tinted backgrounds) */
+  --ops-green-fg: oklch(42% 0.12 155); --ops-red-fg: oklch(48% 0.19 27); --ops-amber-fg: oklch(42% 0.09 70); --ops-blue-fg: oklch(46% 0.17 255); --ops-violet-fg: oklch(46% 0.2 295);
 }
 .dark {
   --ops-bg: oklch(19% 0.004 170);
@@ -88,10 +90,12 @@ body { @apply bg-background text-foreground font-sans antialiased; }
   --ops-accent: oklch(78% 0.13 170);
   --ops-accent-fg: oklch(20% 0.02 170);
   --ops-ring: oklch(78% 0.13 170 / .3);
+  --ops-green-fg: oklch(80% 0.15 155); --ops-red-fg: oklch(76% 0.15 27); --ops-amber-fg: oklch(82% 0.13 75); --ops-blue-fg: oklch(78% 0.12 255); --ops-violet-fg: oklch(80% 0.13 295);
 }
 @theme inline {
   --color-ops-bg: var(--ops-bg); --color-ops-sidebar: var(--ops-sidebar); --color-ops-card: var(--ops-card); --color-ops-border: var(--ops-border);
   --color-ops-fg: var(--ops-fg); --color-ops-muted: var(--ops-muted); --color-ops-hover: var(--ops-hover); --color-ops-accent: var(--ops-accent); --color-ops-accent-fg: var(--ops-accent-fg);
+  --color-ops-green-fg: var(--ops-green-fg); --color-ops-red-fg: var(--ops-red-fg); --color-ops-amber-fg: var(--ops-amber-fg); --color-ops-blue-fg: var(--ops-blue-fg); --color-ops-violet-fg: var(--ops-violet-fg);
   --color-ops-green: var(--ops-green); --color-ops-red: var(--ops-red); --color-ops-amber: var(--ops-amber); --color-ops-blue: var(--ops-blue); --color-ops-violet: var(--ops-violet);
 }
 .ops-root { background: var(--ops-bg); color: var(--ops-fg); font-size: 13.5px; font-family: var(--font-sans); letter-spacing: -0.003em; }

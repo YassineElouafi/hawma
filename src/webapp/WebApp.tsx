@@ -85,7 +85,7 @@ function Login() {
         {step === "code" && <><label htmlFor="w-code" className="mb-1.5 mt-4 block text-[13px] font-medium text-ops-muted">{tr("code")}</label>
           <input id="w-code" dir="ltr" inputMode="numeric" maxLength={6} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={cn(field, "text-center text-2xl font-semibold tracking-[0.5em]")} />
           {dev && <Pill tone="amber" className="mt-3">{tr("devCode")}: {dev}</Pill>}</>}
-        {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red">{err}</p>}
+        {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red-fg">{err}</p>}
         <OBtn variant="primary" className="mt-6 h-12 w-full rounded-full text-base" disabled={busy || (step === "phone" ? phone.length < 8 : code.length !== 6)}>{step === "phone" ? tr("send") : tr("verify")}</OBtn>
       </form>
     </div>
@@ -195,7 +195,7 @@ function Bookings() {
               {["Requested", "Accepted"].includes(b.state) && <OBtn size="sm" onClick={() => run(b.id, "cancel")}>{tr("cancel")}</OBtn>}
               {b.state === "Completed" && <OBtn size="sm" variant="primary" onClick={() => run(b.id, "confirm")}>{tr("confirm")}</OBtn>}
               {b.state === "Completed" && <OBtn size="sm" onClick={() => { setReportText(""); setReport(b); }}>⚠️ {tr("report")}</OBtn>}
-              {b.state === "Disputed" && <span className="text-xs font-semibold text-ops-amber">⏳ {tr("underReview")}</span>}
+              {b.state === "Disputed" && <span className="text-xs font-semibold text-ops-amber-fg">⏳ {tr("underReview")}</span>}
               {["Confirmed", "Settled"].includes(b.state) && <OBtn size="sm" onClick={() => { setStars(5); setNote(""); setRate(b); }}><Star size={13} />{tr("rate")}</OBtn>}
             </div>
           </Card>
@@ -258,7 +258,7 @@ function Profile() {
       <div className="space-y-4 px-5">
         <Card className="flex items-center gap-4 p-4"><Avatar id={me?.phone ?? "me"} label={me?.phone?.slice(-2) ?? "··"} size={56} /><div><div className="text-lg font-bold" dir="ltr">{me?.phone ?? "…"}</div><div className="text-[13px] text-ops-muted">{tr("account")}</div></div></Card>
         <Card className="p-4"><div className="mb-3 text-[13px] font-medium text-ops-muted">{tr("language")}</div><LangPills /></Card>
-        <OBtn variant="outline" className="h-12 w-full rounded-full text-ops-red" onClick={() => save(null)}><LogOut size={16} />{tr("logout")}</OBtn>
+        <OBtn variant="outline" className="h-12 w-full rounded-full text-ops-red-fg" onClick={() => save(null)}><LogOut size={16} />{tr("logout")}</OBtn>
       </div>
     </>
   );

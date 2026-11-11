@@ -10,8 +10,8 @@ export const CardBody = ({ className, ...p }: React.HTMLAttributes<HTMLDivElemen
 
 /* ---------- Badges & status ---------- */
 const tones = {
-  neutral: "bg-ops-hover text-ops-muted", green: "bg-ops-green/12 text-ops-green", red: "bg-ops-red/12 text-ops-red", amber: "bg-ops-amber/18 text-[color-mix(in_oklab,var(--ops-amber)_70%,black)] dark:text-ops-amber",
-  blue: "bg-ops-blue/12 text-ops-blue", violet: "bg-ops-violet/12 text-ops-violet", accent: "bg-ops-accent/12 text-ops-accent",
+  neutral: "bg-ops-hover text-ops-muted", green: "bg-ops-green/12 text-ops-green-fg", red: "bg-ops-red/12 text-ops-red-fg", amber: "bg-ops-amber/18 text-ops-amber-fg",
+  blue: "bg-ops-blue/12 text-ops-blue-fg", violet: "bg-ops-violet/12 text-ops-violet-fg", accent: "bg-ops-accent/12 text-ops-accent",
 };
 export type Tone = keyof typeof tones;
 export const Pill = ({ tone = "neutral", dot, className, children }: { tone?: Tone; dot?: boolean; className?: string; children: React.ReactNode }) => (
@@ -23,7 +23,7 @@ export const stateTone = (s: string): Tone => ({ Requested: "amber", Offered: "a
 const hues = [155, 255, 295, 27, 75, 200, 330];
 export function Avatar({ id, label, size = 28 }: { id: string; label?: string; size?: number }) {
   const h = hues[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % hues.length];
-  return <span className="inline-grid shrink-0 place-items-center rounded-full font-semibold text-white" style={{ width: size, height: size, fontSize: size * 0.4, background: `oklch(60% 0.14 ${h})` }}>{(label ?? id).slice(0, 2).toUpperCase()}</span>;
+  return <span className="inline-grid shrink-0 place-items-center rounded-full font-semibold text-white" style={{ width: size, height: size, fontSize: size * 0.4, background: `oklch(46% 0.13 ${h})` }}>{(label ?? id).slice(0, 2).toUpperCase()}</span>;
 }
 
 /* ---------- Skeleton / empty ---------- */
@@ -118,7 +118,7 @@ export function StatTile({ label, value, format, delta, spark, color, icon, unit
       <div className="flex min-h-[84px] items-end justify-between gap-3 px-5 pb-4 pt-2">
         <div>
           <div className="whitespace-nowrap text-[26px] font-semibold leading-none tracking-tight"><CountUp value={value} format={format} />{unit && <span className="ms-1 text-sm font-medium text-ops-muted">{unit}</span>}</div>
-          {delta != null && <div className={cn("mt-2 text-xs font-medium", delta >= 0 ? "text-ops-green" : "text-ops-red")}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="font-normal text-ops-muted">vs prev.</span></div>}
+          {delta != null && <div className={cn("mt-2 text-xs font-medium", delta >= 0 ? "text-ops-green-fg" : "text-ops-red-fg")}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(0)}% <span className="font-normal text-ops-muted">vs prev.</span></div>}
         </div>
         {spark && <div className="w-28 shrink-0"><Sparkline data={spark} color={color} /></div>}
       </div>

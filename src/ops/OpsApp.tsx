@@ -67,7 +67,7 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
           <label htmlFor="ops-email" className="mb-1.5 mt-6 block text-[12.5px] font-medium">Email</label><input id="ops-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
           <label htmlFor="ops-password" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Password</label><input id="ops-password" type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
           {needCode && <><label htmlFor="ops-code" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Authentication code</label><input id="ops-code" autoFocus inputMode="text" autoComplete="one-time-code" placeholder="123456 or a recovery code" value={code} onChange={(e) => setCode(e.target.value)} className={field} /><p className="mt-1.5 text-xs text-ops-muted">From your authenticator app, or one of your recovery codes.</p></>}
-          {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red">{err}</p>}
+          {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red-fg">{err}</p>}
           <OBtn variant="primary" className="mt-6 h-10 w-full" disabled={busy}>{busy ? "Signing in…" : needCode ? "Verify and sign in" : "Sign in"}</OBtn>
         </form>
       </div>
@@ -100,7 +100,7 @@ function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogo
           <button key={n.id} onClick={() => { setPage(n.id); setDrawer(false); }} aria-current={page === n.id ? "page" : undefined} className={cn("relative mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start font-medium transition-colors", page === n.id ? "text-ops-fg" : "text-ops-muted hover:bg-ops-hover hover:text-ops-fg")}>
             {page === n.id && <motion.span layoutId="nav" className="absolute inset-0 rounded-lg bg-ops-card shadow-sm ring-1 ring-ops-border" transition={{ type: "spring", damping: 30, stiffness: 380 }} />}
             <n.icon size={16} className="relative" /><span className="relative flex-1">{n.label}</span>
-            {n.id === "kyc" && !!pending && <span className="relative rounded-md bg-ops-amber/25 px-1.5 text-[11px] font-semibold text-[color-mix(in_oklab,var(--ops-amber)_65%,black)] dark:text-ops-amber">{pending}</span>}
+            {n.id === "kyc" && !!pending && <span className="relative rounded-md bg-ops-amber/25 px-1.5 text-[11px] font-semibold text-ops-amber-fg ">{pending}</span>}
           </button>
         ))}
       </nav>
@@ -144,7 +144,7 @@ function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogo
 }
 
 const PageHead = ({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) => <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-[22px] font-semibold tracking-tight">{title}</h1>{sub && <p className="mt-0.5 text-ops-muted">{sub}</p>}</div>{right}</div>;
-const ErrBox = ({ m }: { m: string }) => m ? <p role="alert" className="mb-4 rounded-lg bg-ops-red/10 px-4 py-3 text-ops-red">{m}</p> : null;
+const ErrBox = ({ m }: { m: string }) => m ? <p role="alert" className="mb-4 rounded-lg bg-ops-red/10 px-4 py-3 text-ops-red-fg">{m}</p> : null;
 const Rows = ({ n, cols }: { n: number; cols: number }) => <>{Array.from({ length: n }).map((_, i) => <tr key={i}>{Array.from({ length: cols }).map((__, j) => <td key={j} className="px-4 py-3.5"><Skeleton className="h-3.5" /></td>)}</tr>)}</>;
 
 /* ---------- overview ---------- */
