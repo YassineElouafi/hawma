@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  chooseTime: "Choisis un créneau", noSlots: "Aucune disponibilité cette semaine", durationLabel: "Durée", hoursShort: "h", totalLabel: "Total", slotTaken: "Ce créneau vient d'être pris, choisis-en un autre.",
   report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Le paiement est suspendu le temps de l'examen.", s_Disputed_hint: "En cours d'examen par notre équipe",
   earnings: "Mes revenus", netEarnings: "Net après frais", feeOwed: "Frais dus à Hawma", feeWarn: "Au-delà de 300 MAD de frais, tu ne reçois plus de missions urgentes jusqu'au règlement.",
   searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", providerAnon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.", details: "Détails",
@@ -22,6 +23,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  chooseTime: "اختر موعدا", noSlots: "لا توفر هذا الأسبوع", durationLabel: "المدة", hoursShort: "س", totalLabel: "المجموع", slotTaken: "تم حجز هذا الموعد للتو، اختر موعدا آخر.",
   report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", s_Disputed_hint: "قيد المراجعة من فريقنا",
   earnings: "أرباحي", netEarnings: "الصافي بعد الرسوم", feeOwed: "رسوم مستحقة لحومة", feeWarn: "إذا تجاوزت الرسوم 300 درهم فلن تصلك مهام عاجلة حتى تسوّيها.",
   searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", providerAnon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.", details: "التفاصيل",
@@ -43,6 +45,7 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  chooseTime: "اختار الموعد", noSlots: "ما كاين حتى وقت هاد السيمانة", slotTaken: "هاد الموعد تحجز دابا، اختار واحد آخر.",
   report: "بلّغ على مشكل", reportTitle: "شنو وقع؟", reportHint: "وصف المشكل فشي جمل. الفريق ديالنا كيراجع كل بلاغ.", reportSend: "صيفط البلاغ", reportSent: "تصيفط البلاغ ✔ الخلاص تّوقف حتى تتراجع.",
   earnings: "الأرباح ديالي", netEarnings: "الصافي من بعد الرسوم", feeOwed: "الرسوم اللي عليك لحومة", feeWarn: "إلا فاتو الرسوم 300 درهم ما غاديش توصلك خدمات مستعجلة حتى تخلّص.",
   searching: "كنقلّبو على المقدّم ديالك…", searchingHint: "المقدّمين القراب كيتوصلو بالطلب واحد واحد.", arrivesIn: "غايوصل فـ", away: "منك", unfilledTitle: "ما كاين حد متاح", unfilledHint: "عاود من بعد شي دقايق ولا اختار مقدّم من الكتالوج.",

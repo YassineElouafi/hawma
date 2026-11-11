@@ -27,6 +27,7 @@ test("web app flow against a mocked API", async ({ page }, info) => {
   await page.route("**/api/v1/auth/otp/request", (r) => r.fulfill({ json: { sent: true, expiresInS: 300, devCode: "123456" } }));
   await page.route("**/api/v1/auth/otp/verify", (r) => r.request().postDataJSON().code === "123456" ? r.fulfill({ json: { userId: "u1", accessToken: "a", refreshToken: "r".repeat(30) } }) : r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "wrong code" } }));
   await page.route("**/api/v1/search**", (r) => r.fulfill({ json: hits }));
+  await page.route("**/api/v1/offers/*/slots**", (r) => r.fulfill({ json: [{ date: "2026-11-17", startMin: 540, endMin: 600 }, { date: "2026-11-17", startMin: 570, endMin: 630 }, { date: "2026-11-17", startMin: 600, endMin: 660 }, { date: "2026-11-18", startMin: 540, endMin: 600 }] }));
   await page.route("**/api/v1/bookings", (r) => { if (r.request().method() === "POST") { bookings = [{ id: "b1111111-0000", state: "Requested", providerId: "p1", customerId: "u1", totalCentimes: 12000, paymentMethod: "cash" }, { id: "b2222222-0000", state: "Requested", mode: "dispatch", providerId: null, customerId: "u1", totalCentimes: 3500, paymentMethod: "cash", lat: 33.5883, lng: -7.635 }]; return r.fulfill({ status: 201, json: bookings[0] }); } return r.fulfill({ json: bookings }); });
   await page.route("**/api/v1/me", (r) => r.fulfill({ json: { id: "u1", phone: "+212611223344" } }));
 
@@ -44,7 +45,12 @@ test("web app flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `screenshots/${info.project.name}-app-4-detail.png` });
-  await page.getByRole("button", { name: "Réserver" }).click();
+  const reserve = page.getByRole("button", { name: "Réserver" });
+  await expect(reserve).toBeDisabled();                                  // a time slot is required
+  await page.getByRole("button", { name: "09:30" }).click();
+  await expect(page.getByRole("button", { name: "09:30" })).toHaveAttribute("aria-pressed", "true");
+  await page.screenshot({ path: `screenshots/${info.project.name}-app-4b-slots.png` });
+  await reserve.click();
   await expect(page.getByText("Demande envoyée")).toBeVisible();
   await page.getByRole("button", { name: "Réservations" }).click();
   await expect(page.getByText("Aucune réservation en cours")).toHaveCount(0);

@@ -202,10 +202,16 @@ function HitCard({ h, onPress }: { h: Hit; onPress: () => void }) {
 
 function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
   const { t } = useT(); const [busy, setBusy] = useState(false);
+  const [dur, setDur] = useState(60); const [slots, setSlots] = useState<{ date: string; startMin: number }[] | null>(null); const [slot, setSlot] = useState<{ date: string; startMin: number } | null>(null); const [dayIdx, setDayIdx] = useState(0);
+  useEffect(() => { setSlot(null); setSlots(null); setDayIdx(0); if (!hit) return; const from = new Date().toISOString().slice(0, 10); api(`/v1/offers/${hit.id}/slots?from=${from}&days=7&durationMin=${dur}`, { auth: false }).then(setSlots).catch(() => setSlots([])); }, [hit?.id, dur]); // eslint-disable-line
+  const days = [...new Set((slots ?? []).map((s) => s.date))]; const daySlots = (slots ?? []).filter((s) => s.date === days[dayIdx]);
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const dayLabel = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
+  const hourly = hit?.pricingModel === "hourly"; const price = hit ? (hourly ? Math.round((hit.priceCentimes * dur) / 60) : hit.priceCentimes) : 0;
   const book = async () => {
-    if (!hit) return; setBusy(true);
-    try { await post("/v1/bookings", { mode: "catalogue", providerId: hit.providerId, totalCentimes: hit.priceCentimes, paymentMethod: "cash" }); Alert.alert(t("booked")); onClose(); }
-    catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setBusy(false); }
+    if (!hit || !slot) return; setBusy(true);
+    try { await post("/v1/bookings", { mode: "catalogue", offerId: hit.id, slot, durationMin: dur, paymentMethod: "cash" }); Alert.alert(t("booked")); onClose(); }
+    catch (e) { Alert.alert(e instanceof ApiError && e.status === 409 ? t("slotTaken") : e instanceof ApiError ? e.message : t("network")); setSlot(null); } finally { setBusy(false); }
   };
   return (
     <Sheet visible={!!hit} onClose={onClose}>
@@ -219,13 +225,18 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
             <Card key={l} style={{ flex: 1, alignItems: "center", padding: 12 }}><Text style={{ color: C.mute, fontSize: 11.5, fontWeight: "600" }}>{l}</Text><Text style={{ color: C.ink, fontWeight: "800", fontSize: 17, marginTop: 4 }}>{v}</Text></Card>
           ))}
         </View>
+        {hourly && <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 }}><Text style={{ color: C.mute, fontWeight: "600" }}>{t("durationLabel")}</Text>{[60, 120, 180].map((d) => <Pressable key={d} onPress={() => setDur(d)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.pill, backgroundColor: dur === d ? C.emerald : C.card, borderWidth: 1, borderColor: dur === d ? C.emerald : C.border }}><Text style={{ fontWeight: "700", color: dur === d ? "#fff" : C.ink }}>{d / 60}{t("hoursShort")}</Text></Pressable>)}</View>}
+        <Text style={{ fontWeight: "800", color: C.ink, marginTop: 16, marginBottom: 8 }}>{t("chooseTime")}</Text>
+        {!slots ? <CardSkeleton /> : days.length === 0 ? <Card><Text style={{ color: C.mute }}>{t("noSlots")}</Text></Card> : <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>{days.map((d, i) => <Pressable key={d} onPress={() => { setDayIdx(i); setSlot(null); }} style={{ marginRight: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.md, backgroundColor: dayIdx === i ? C.emeraldSoft : C.card, borderWidth: 1.5, borderColor: dayIdx === i ? C.emerald2 : C.border }}><Text style={{ fontWeight: "700", color: dayIdx === i ? C.emerald : C.ink }}>{dayLabel(d)}</Text></Pressable>)}</ScrollView>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>{daySlots.map((s) => { const on = slot?.startMin === s.startMin && slot?.date === s.date; return <Pressable key={s.startMin} onPress={() => setSlot(s)} style={{ paddingHorizontal: 14, paddingVertical: 9, borderRadius: R.md, backgroundColor: on ? C.emerald : C.card, borderWidth: 1, borderColor: on ? C.emerald : C.border }}><Text style={{ fontWeight: "700", color: on ? "#fff" : C.ink }}>{hhmm(s.startMin)}</Text></Pressable>; })}</View></>}
         <Card style={{ marginTop: 12 }}>
-          <Row emoji="💰" label={t("priceFrom")} value={hit.priceCentimes ? `${hit.priceCentimes / 100} ${t("mad")}` : t("free")} /><Divider />
+          <Row emoji="💰" label={t("totalLabel")} value={price ? `${price / 100} ${t("mad")}` : t("free")} /><Divider />
           <Row emoji="💵" label={t("payment")} value={t("cash")} /><Divider />
           <Row emoji="🚀" label={t("whatNext")} />
           <Text style={{ color: C.mute, marginTop: -4, paddingLeft: 48, paddingBottom: 6, lineHeight: 19 }}>{t("whatNextText")}</Text>
         </Card>
-        <Button label={t("book")} icon="📅" onPress={book} busy={busy} style={{ marginTop: 16 }} />
+        <Button label={t("book")} icon="📅" onPress={book} busy={busy} disabled={!slot} style={{ marginTop: 16 }} />
         <Button label={t("back")} variant="ghost" onPress={onClose} style={{ marginTop: 4 }} />
       </>}
     </Sheet>

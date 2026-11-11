@@ -22,3 +22,13 @@ export function localParts(at: Date): { date: string; startMin: number } {
   const local = new Date(at.getTime() + utcOffsetMinutes(at) * 60_000);
   return { date: ymd(local), startMin: local.getUTCHours() * 60 + local.getUTCMinutes() };
 }
+
+/** Inverse of localParts: a Moroccan wall-clock date + minute-of-day → the UTC instant. (The Ramadan switch is modelled on calendar dates, so wall times within the hour either side of the switch-over midnight are ambiguous; no bookable slot lives there.) */
+export function localToUtc(date: string, startMin: number): Date {
+  const [y, m, d] = date.split("-").map(Number);
+  const asUtc = Date.UTC(y, m - 1, d, 0, startMin);                       // pretend the wall clock is UTC
+  const plusOne = new Date(asUtc - 60 * 60_000);                          // default offset: UTC+1
+  return utcOffsetMinutes(plusOne) === 60 ? plusOne : new Date(asUtc);    // Ramadan: UTC+0
+}
+/** Absolute minute index of a local slot (days since 2020-01-01 × 1440 + minute) — comparable across days, used for overlap checks. */
+export const slotAbs = (date: string, startMin: number) => { const [y, m, d] = date.split("-").map(Number); return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(2020, 0, 1)) / 60_000) + startMin; };

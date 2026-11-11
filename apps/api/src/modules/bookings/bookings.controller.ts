@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Inject, Param, Post, UnauthorizedException } from "@nestjs/common";
+import { Body, ConflictException, Controller, Get, Headers, Inject, Param, Post, UnauthorizedException, UnprocessableEntityException } from "@nestjs/common";
 import { z } from "zod";
 import { AuthService } from "../auth/auth.service";
 import { BookingsService } from "./bookings.service";
@@ -8,7 +8,10 @@ import { COMMANDS, type Command } from "../../domain/booking";
 const createSchema = z.object({
   mode: z.enum(["catalogue", "dispatch", "quote"]),
   providerId: z.string().uuid().optional(),
-  totalCentimes: z.number().int().min(0).max(10_000_000),
+  offerId: z.string().uuid().optional(),
+  slot: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), startMin: z.number().int().min(0).max(1439) }).optional(),
+  durationMin: z.number().int().min(15).max(720).optional(),
+  totalCentimes: z.number().int().min(0).max(10_000_000).default(0),
   paymentMethod: z.enum(["cash", "card", "wallet"]).default("cash"),
 });
 
@@ -17,7 +20,19 @@ export class BookingsController {
   constructor(@Inject(BookingsService) private svc: BookingsService, @Inject(AuthService) private auth: AuthService, @Inject(CatalogueService) private catalogue: CatalogueService) {}
   private async uid(h?: string) { if (!h?.startsWith("Bearer ")) throw new UnauthorizedException(); return this.auth.verify(h.slice(7)); }
 
-  @Post() async create(@Headers("authorization") h: string, @Body() b: unknown) { return this.svc.create(await this.uid(h), createSchema.parse(b)); }
+  @Post() async create(@Headers("authorization") h: string, @Body() b: unknown) {
+    const uid = await this.uid(h); const v = createSchema.parse(b);
+    if (!v.offerId) return this.svc.create(uid, v);
+    // Booking a catalogue offer for a time slot: price, provider and category come from the offer, never from the client.
+    const offer = await this.catalogue.offer(v.offerId);
+    if (offer.providerId === uid) throw new UnprocessableEntityException("you cannot book your own offer");
+    if (offer.pricingModel === "quote") throw new UnprocessableEntityException("this offer is priced on request");
+    if (!v.slot || !v.durationMin) throw new UnprocessableEntityException("choose a time slot and duration");
+    const free = await this.catalogue.slots(v.offerId, v.slot.date, 1, v.durationMin);
+    if (!free.some((s) => s.startMin === v.slot!.startMin)) throw new ConflictException("that time slot is not available");
+    const total = offer.pricingModel === "hourly" ? Math.round((offer.basePriceCentimes * v.durationMin) / 60) : offer.basePriceCentimes;
+    return this.svc.create(uid, { mode: "catalogue", providerId: offer.providerId, offerId: offer.id, categoryId: offer.categoryId, slot: v.slot, durationMin: v.durationMin, totalCentimes: total, paymentMethod: v.paymentMethod, lat: offer.lat, lng: offer.lng });
+  }
   @Get() async list(@Headers("authorization") h: string) { return this.svc.list(await this.uid(h)); }
   /** Who is coming? Public-safe summary of the assigned provider, visible to the booking's participants only (no phone number). */
   @Get(":id/provider") async provider(@Headers("authorization") h: string, @Param("id") id: string) {

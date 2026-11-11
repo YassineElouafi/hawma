@@ -85,6 +85,20 @@
       "when": 1794371192299,
       "tag": "0011_staff_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794374751955,
+      "tag": "0012_slot_exclusion",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794374780267,
+      "tag": "0013_check_noop",
+      "breakpoints": true
     }
   ]
 }

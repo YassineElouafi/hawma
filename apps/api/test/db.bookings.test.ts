@@ -125,3 +125,22 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("slot bookings on real Postgres (exclusion constraint)", () => {
+  it("parallel bookings of one slot: exactly one wins; overlaps rejected; cancelling frees the slot", async () => {
+    const client = postgres(url!, { max: 10 }); const db2 = drizzle(client); const svc = new BookingsService(new PgBookingRepo(db2));
+    const prov = randomUUID(); const mk = (date: string, startMin: number, dur: number, cust = randomUUID()) => svc.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 5000, paymentMethod: "cash", slot: { date, startMin }, durationMin: dur });
+    const rs = await Promise.allSettled(Array.from({ length: 6 }, () => mk("2027-03-02", 600, 60)));
+    expect(rs.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect((rs.find((r) => r.status === "rejected") as PromiseRejectedResult).reason.message).toMatch(/no longer available/);
+    await expect(mk("2027-03-02", 630, 60)).rejects.toThrow(/no longer available/);          // 10:30–11:30 overlaps 10:00–11:00
+    await expect(mk("2027-03-02", 570, 60)).rejects.toThrow(/no longer available/);          // 09:30–10:30 overlaps
+    await mk("2027-03-02", 660, 60); await mk("2027-03-02", 540, 60);                         // adjacent slots are fine
+    const won = (rs.find((r) => r.status === "fulfilled") as PromiseFulfilledResult<{ id: string; customerId: string }>).value;
+    await svc.command(won.id, "cancel", won.customerId);
+    await mk("2027-03-02", 600, 60);                                                          // freed
+    const [row] = await client`select scheduled_at, local_date, start_min, slot_from, slot_to from booking.booking where id = ${won.id}`;
+    expect(row.local_date).toBe("2027-03-02"); expect(row.slot_to - row.slot_from).toBe(60); expect(new Date(row.scheduled_at).toISOString()).toBe("2027-03-02T10:00:00.000Z");   // Ramadan 2027 (8 Feb – 9 Mar) is UTC+0
+    await client.end();
+  });
+});

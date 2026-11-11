@@ -17,3 +17,16 @@ describe("Morocco local time", () => {
     process.env.TZ = keep;
   });
 });
+
+import { localToUtc, slotAbs } from "../src/domain/time";
+describe("local slot ↔ UTC", () => {
+  it("converts Moroccan wall-clock slots to UTC, with Ramadan at UTC+0", () => {
+    expect(localToUtc("2026-11-17", 540).toISOString()).toBe("2026-11-17T08:00:00.000Z");
+    expect(localToUtc("2026-03-05", 540).toISOString()).toBe("2026-03-05T09:00:00.000Z");   // inside Ramadan 2026
+    expect(localToUtc("2026-11-17", 30).toISOString()).toBe("2026-11-16T23:30:00.000Z");   // 00:30 local is the previous UTC day
+  });
+  it("round-trips through localParts across the year", () => {
+    for (const date of ["2026-01-10", "2026-02-18", "2026-03-20", "2026-03-21", "2026-11-17", "2027-02-08"]) for (const m of [30, 540, 1200]) { const u = localToUtc(date, m); expect(localParts(u)).toEqual({ date, startMin: m }); }
+  });
+  it("slot indexes are monotonic across days", () => { expect(slotAbs("2026-11-18", 0)).toBe(slotAbs("2026-11-17", 1440)); expect(slotAbs("2026-11-17", 600)).toBeGreaterThan(slotAbs("2026-11-17", 599)); });
+});

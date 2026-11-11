@@ -16,16 +16,19 @@ export class PgBookingRepo implements BookingRepo {
     return {
       id: row.id, customerId: row.customerId, providerId: row.providerId, mode: row.mode as BookingRecord["mode"],
       state: row.state as BookingRecord["state"], totalCentimes: row.totalCentimes, feeCentimes: row.feeCentimes,
-      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events, lat: row.lat, lng: row.lng, categoryId: row.categoryId, createdAt: row.createdAt.toISOString(),
+      paymentMethod: row.paymentMethod as BookingRecord["paymentMethod"], version: row.version, events, lat: row.lat, lng: row.lng, categoryId: row.categoryId, createdAt: row.createdAt.toISOString(), offerId: row.offerId, scheduledAt: row.scheduledAt?.toISOString() ?? null, durationMin: row.durationMin, localDate: row.localDate, startMin: row.startMin, slotFrom: row.slotFrom, slotTo: row.slotTo,
     };
   }
 
   async insert(b: BookingRecord) {
-    await this.db.insert(s.bookings).values({
+    try {
+      await this.db.insert(s.bookings).values({
       id: b.id, customerId: b.customerId, providerId: b.providerId, mode: b.mode, state: b.state,
       totalCentimes: b.totalCentimes, feeCentimes: b.feeCentimes, paymentMethod: b.paymentMethod, version: b.version,
       lat: b.lat ?? 0, lng: b.lng ?? 0, categoryId: b.categoryId ?? null,
-    });
+        offerId: b.offerId ?? null, scheduledAt: b.scheduledAt ? new Date(b.scheduledAt) : null, durationMin: b.durationMin ?? 60, localDate: b.localDate ?? null, startMin: b.startMin ?? null, slotFrom: b.slotFrom ?? null, slotTo: b.slotTo ?? null,
+      });
+    } catch (e) { const c = e as { code?: string; cause?: { code?: string } }; if ((c.code ?? c.cause?.code) === "23P01") throw new ConflictException("that time slot is no longer available"); throw e; }   // exclusion_violation
   }
 
   async stats(days: number) {

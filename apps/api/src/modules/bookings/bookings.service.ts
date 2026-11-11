@@ -2,11 +2,13 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException, U
 import { randomUUID } from "node:crypto";
 import { allowedCommands, IllegalTransition, transition, type Actor, type BookingEvent, type BookingState, type Command, type Mode } from "../../domain/booking";
 import { platformFee } from "../../domain/money";
+import { localToUtc, slotAbs } from "../../domain/time";
 
 export interface BookingRecord {
   id: string; customerId: string; providerId: string | null; mode: Mode; state: BookingState; totalCentimes: number; feeCentimes: number;
   paymentMethod: "cash" | "card" | "wallet"; version: number; events: BookingEvent[];
   lat?: number; lng?: number; categoryId?: string | null; createdAt?: string;
+  offerId?: string | null; scheduledAt?: string | null; durationMin?: number; localDate?: string | null; startMin?: number | null; slotFrom?: number | null; slotTo?: number | null;
 }
 export interface BookingStats { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[] }
 export interface BookingRepo { stats(days: number): Promise<BookingStats>; listAll(state: string | undefined, limit: number): Promise<BookingRecord[]>; listFor(userId: string, limit: number): Promise<BookingRecord[]>; get(id: string): Promise<BookingRecord | undefined>; save(b: BookingRecord, expectedVersion: number): Promise<void>; insert(b: BookingRecord): Promise<void> }
@@ -26,7 +28,10 @@ export class MemoryBookingRepo implements BookingRepo {
   }
   async listAll(state: string | undefined, limit: number) { return [...this.m.values()].filter((b) => !state || b.state === state).slice(-limit).reverse().map((b) => structuredClone(b)); }
   async listFor(userId: string, limit: number) { return [...this.m.values()].filter((b) => b.customerId === userId || b.providerId === userId).slice(-limit).reverse().map((b) => structuredClone(b)); }
-  async insert(b: BookingRecord) { this.m.set(b.id, structuredClone(b)); }
+  async insert(b: BookingRecord) {
+    if (b.providerId && b.slotFrom != null && b.slotTo != null && [...this.m.values()].some((x) => x.providerId === b.providerId && x.slotFrom != null && x.slotTo != null && !["Declined", "Expired", "Cancelled", "Refunded"].includes(x.state) && b.slotFrom! < x.slotTo! && x.slotFrom! < b.slotTo!)) throw new ConflictException("that time slot is no longer available");
+    this.m.set(b.id, structuredClone(b));
+  }
   async save(b: BookingRecord, expected: number) {
     const cur = this.m.get(b.id);
     if (!cur || cur.version !== expected) throw new ConflictException("booking was modified concurrently");
@@ -42,13 +47,17 @@ export class BookingsService {
   afterEvent?: (b: BookingRecord, e: BookingEvent) => void;
   constructor(readonly repo: BookingRepo, private now: () => number = Date.now) {}
 
-  async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"]; lat?: number; lng?: number; categoryId?: string }) {
+  async create(customerId: string, input: { mode: Mode; providerId?: string; totalCentimes: number; paymentMethod: BookingRecord["paymentMethod"]; lat?: number; lng?: number; categoryId?: string; offerId?: string; slot?: { date: string; startMin: number }; durationMin?: number }) {
     if (input.mode === "catalogue" && !input.providerId) throw new UnprocessableEntityException("catalogue bookings need a providerId");
     const b: BookingRecord = {
       id: randomUUID(), customerId, providerId: input.providerId ?? null, mode: input.mode, state: "Requested",
       totalCentimes: input.totalCentimes, feeCentimes: platformFee(input.totalCentimes), paymentMethod: input.paymentMethod, version: 0, events: [],
-      lat: input.lat, lng: input.lng, categoryId: input.categoryId ?? null, createdAt: new Date(this.now()).toISOString(),
+      lat: input.lat, lng: input.lng, categoryId: input.categoryId ?? null, createdAt: new Date(this.now()).toISOString(), offerId: input.offerId ?? null,
     };
+    if (input.slot) {
+      if (!input.durationMin) throw new UnprocessableEntityException("a duration is required to book a time slot");
+      Object.assign(b, { durationMin: input.durationMin, localDate: input.slot.date, startMin: input.slot.startMin, scheduledAt: localToUtc(input.slot.date, input.slot.startMin).toISOString(), slotFrom: slotAbs(input.slot.date, input.slot.startMin), slotTo: slotAbs(input.slot.date, input.slot.startMin) + input.durationMin });
+    }
     await this.repo.insert(b);
     return b;
   }

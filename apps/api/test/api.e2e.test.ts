@@ -217,3 +217,24 @@ describe("money: wallet and finance after a confirmed cash job", () => {
     expect((await app.inject({ url: "/v1/me/wallet" })).statusCode).toBe(401);
   });
 });
+
+describe("scheduled catalogue bookings", () => {
+  it("books a free slot at the server-computed price; conflicts, overlaps and invalid slots are refused", async () => {
+    const prov = await login("0601717171"), c1 = await login("0602727272"), c2 = await login("0603737373");
+    OVERRIDES.catalogueRepo.stats.set(prov.userId, { rating: 4.8, jobs: 10, tier: 1, cancelRate: 0, responseMin: 5, status: "active" });
+    const offer = (await post("/v1/offers", { categoryId: "tutoring", title: "Maths", lat: 33.58, lng: -7.63, basePriceCentimes: 10000, pricingModel: "hourly" }, prov.accessToken)).json();
+    await app.inject({ method: "PUT", url: "/v1/me/availability", payload: { rules: [{ weekday: 2, startMin: 540, endMin: 720 }] }, headers: { authorization: `Bearer ${prov.accessToken}` } });
+    const book = (token: string, slot: object, extra: object = {}) => post("/v1/bookings", { mode: "catalogue", offerId: offer.id, slot, durationMin: 120, ...extra }, token);
+    const day = "2026-11-17";                                                           // a Tuesday
+    const ok = await book(c1.accessToken, { date: day, startMin: 540 }, { totalCentimes: 1 });   // client-supplied price must be ignored
+    expect(ok.statusCode).toBe(201); expect(ok.json()).toMatchObject({ providerId: prov.userId, totalCentimes: 20000, state: "Requested", localDate: day, startMin: 540 });
+    expect(ok.json().scheduledAt).toBe("2026-11-17T08:00:00.000Z");                     // 09:00 Morocco time (UTC+1)
+    expect((await book(c2.accessToken, { date: day, startMin: 540 })).statusCode).toBe(409);    // same slot
+    expect((await book(c2.accessToken, { date: day, startMin: 570 }, { durationMin: 60 })).statusCode).toBe(409); // overlaps the first booking
+    expect((await book(c2.accessToken, { date: "2026-11-18", startMin: 540 })).statusCode).toBe(409);            // Wednesday: no availability
+    expect((await book(prov.accessToken, { date: day, startMin: 600 }, { durationMin: 60 })).statusCode).toBe(422); // own offer
+    expect((await post("/v1/bookings", { mode: "catalogue", offerId: offer.id }, c2.accessToken)).statusCode).toBe(422);  // no slot
+    await post(`/v1/bookings/${ok.json().id}/cancel`, undefined, c1.accessToken);                                   // cancelling frees the slot
+    expect((await book(c2.accessToken, { date: day, startMin: 540 })).statusCode).toBe(201);
+  });
+});

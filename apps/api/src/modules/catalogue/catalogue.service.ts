@@ -64,6 +64,8 @@ export class CatalogueService {
     }));
   }
 
+  async offer(id: string) { const o = await this.repo.getOffer(id); if (!o || !o.active) throw new NotFoundException(); return o; }
+
   async slots(offerId: string, fromDate: string, days: number, durationMin: number) {
     const o = await this.repo.getOffer(offerId);
     if (!o) throw new NotFoundException();
