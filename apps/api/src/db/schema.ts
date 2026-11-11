@@ -130,7 +130,7 @@ export const auditLog = platform.table("audit_log", {
 });
 
 export const staffUsers = platform.table("staff_user", {
-  id: id(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
+  id: id(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(), mfaSecret: text("mfa_secret"), mfaEnabled: boolean("mfa_enabled").notNull().default(false), mfaRecovery: jsonb("mfa_recovery").notNull().default([]),
   roles: jsonb("roles").notNull().default([]), active: boolean("active").notNull().default(true), createdAt: createdAt(),
 }, (t) => [uniqueIndex("staff_email_uq").on(t.email)]);
 

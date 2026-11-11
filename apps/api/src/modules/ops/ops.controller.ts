@@ -5,7 +5,8 @@ import { BookingsService } from "../bookings/bookings.service";
 import { LedgerService } from "../ledger/ledger.service";
 import { StaffService, type Staff } from "./staff.service";
 
-const loginSchema = z.object({ email: z.string().email(), password: z.string().min(8).max(200) });
+const loginSchema = z.object({ email: z.string().email(), password: z.string().min(8).max(200), code: z.string().max(20).optional() });
+const codeSchema = z.object({ code: z.string().min(6).max(20) });
 const settleSchema = z.object({ providerId: z.string().uuid(), amountCentimes: z.number().int().min(1).max(10_000_000), reference: z.string().uuid(), reason: z.string().min(5).max(300) });
 const decisionSchema = z.object({ reason: z.string().max(500).optional() });
 
@@ -14,7 +15,10 @@ export class OpsController {
   constructor(@Inject(StaffService) private staff: StaffService, @Inject(OpsService) private ops: OpsService, @Inject(BookingsService) private bookings: BookingsService, @Inject(LedgerService) private ledger: LedgerService) {}
   private async me(h?: string): Promise<Staff> { if (!h?.startsWith("Bearer ")) throw new UnauthorizedException(); return this.staff.authenticate(h.slice(7)); }
 
-  @Post("login") @HttpCode(200) login(@Body() b: unknown) { const v = loginSchema.parse(b); return this.staff.login(v.email, v.password); }
+  @Post("login") @HttpCode(200) login(@Body() b: unknown) { const v = loginSchema.parse(b); return this.staff.login(v.email, v.password, v.code); }
+  @Post("mfa/setup") @HttpCode(200) async mfaSetup(@Headers("authorization") h: string) { return this.staff.mfaSetup(await this.me(h)); }
+  @Post("mfa/enable") @HttpCode(200) async mfaEnable(@Headers("authorization") h: string, @Body() b: unknown) { return this.staff.mfaEnable(await this.me(h), codeSchema.parse(b).code); }
+  @Post("mfa/disable") @HttpCode(200) async mfaDisable(@Headers("authorization") h: string, @Body() b: unknown) { return this.staff.mfaDisable(await this.me(h), codeSchema.parse(b).code); }
   @Get("me") async whoami(@Headers("authorization") h: string) { return this.me(h); }
 
   @Get("kyc") async kycQueue(@Headers("authorization") h: string, @Query("limit") limit?: string) {

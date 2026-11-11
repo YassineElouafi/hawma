@@ -4,12 +4,14 @@ import * as s from "../../db/schema";
 import { hashPassword, type StaffRecord, type StaffRepo } from "./staff.service";
 import { ROLES, type Role } from "../../domain/rbac";
 
-const toRec = (r: typeof s.staffUsers.$inferSelect): StaffRecord => ({ id: r.id, email: r.email, passwordHash: r.passwordHash, roles: (r.roles as Role[]), active: r.active });
+const toRec = (r: typeof s.staffUsers.$inferSelect): StaffRecord => ({ id: r.id, email: r.email, passwordHash: r.passwordHash, roles: (r.roles as Role[]), active: r.active, mfaSecret: r.mfaSecret, mfaEnabled: r.mfaEnabled, mfaRecovery: (r.mfaRecovery as string[]) ?? [] });
 
 export class PgStaffRepo implements StaffRepo {
   constructor(private db: PostgresJsDatabase) {}
   async byEmail(email: string) { const [r] = await this.db.select().from(s.staffUsers).where(eq(s.staffUsers.email, email.toLowerCase())); return r && toRec(r); }
   async byId(id: string) { const [r] = await this.db.select().from(s.staffUsers).where(eq(s.staffUsers.id, id)); return r && toRec(r); }
+
+  async saveMfa(id: string, patch: { mfaSecret?: string | null; mfaEnabled?: boolean; mfaRecovery?: string[] }) { await this.db.update(s.staffUsers).set(patch).where(eq(s.staffUsers.id, id)); }
 
   /** Idempotent: creates the account or updates its password/roles. Used by the bootstrap CLI. */
   async upsert(email: string, password: string, roles: Role[]) {

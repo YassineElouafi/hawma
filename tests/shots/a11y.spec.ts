@@ -8,7 +8,6 @@ async function scan(page: Page, name: string) {
   return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
 }
 
-test.skip(({ browserName }, info) => info.project.name !== "desktop", "desktop only");
 
 test("landing page (fr, rtl ar)", async ({ page }) => {
   await page.goto("/"); await page.waitForTimeout(1500);

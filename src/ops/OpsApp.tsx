@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BadgeCheck, Banknote, ClipboardList, Command, Gauge, LayoutDashboard, LogOut, Scale, Menu, Moon, ScrollText, Search, ShieldCheck, Sprout, Sun, Users2, X } from "lucide-react";
+import { Activity, BadgeCheck, Banknote, ClipboardList, Command, Gauge, KeyRound, LayoutDashboard, LogOut, Scale, Menu, Moon, ScrollText, Search, ShieldCheck, Sprout, Sun, Users2, X } from "lucide-react";
 import { Avatar, AreaChart, BarList, Card, CardBody, CardHeader, CardTitle, Empty, OBtn, Pill, Segmented, Skeleton, StatTile, Table, Td, Th, Tr, stateTone } from "@/components/arc/primitives";
 import { CommandPalette, Toaster, useTheme, useToast, type Cmd } from "@/components/arc/overlays";
 import { cn } from "@/lib/utils";
 
 const API = "/api";
-type Staff = { id: string; email: string; roles: string[] };
+type Staff = { id: string; email: string; roles: string[]; mfa?: boolean };
 type Kyc = { id: string; userId: string; tier: number; status: string; documents: string[]; createdAt: string };
 type Booking = { id: string; state: string; mode: string; customerId: string; providerId: string | null; totalCentimes: number; feeCentimes: number; paymentMethod: string; events?: { type: string; actor: string; at: string }[] };
 type Audit = { id: number; at: string; actorId: string; action: string; target: string; reason?: string };
 type Stats = { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[]; active: number; pendingKyc: number; fillRate: number | null };
-type Page = "overview" | "kyc" | "bookings" | "disputes" | "finance" | "audit";
+type Page = "overview" | "kyc" | "bookings" | "disputes" | "finance" | "audit" | "security";
 
 async function call<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(API + path, { ...init, headers: { ...(init?.body ? { "content-type": "application/json" } : {}), authorization: `Bearer ${token}`, ...init?.headers } });
@@ -47,10 +47,10 @@ function Gate() {
 
 /* ---------- login ---------- */
 function Login({ onToken }: { onToken: (t: string) => void }) {
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [code, setCode] = useState(""); const [needCode, setNeedCode] = useState(false); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const go = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr("");
-    try { const r = await fetch(`${API}/ops/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) }); const b = await r.json(); if (!r.ok) throw new Error(b.title ?? "Login failed"); onToken(b.token); }
+    try { const r = await fetch(`${API}/ops/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, ...(code ? { code: code.trim() } : {}) }) }); const b = await r.json(); if (!r.ok) { if (b.title === "mfa_required") { setNeedCode(true); return; } throw new Error(b.title ?? "Login failed"); } onToken(b.token); }
     catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
   };
   const field = "h-10 w-full rounded-lg border border-ops-border bg-ops-card px-3 outline-none transition focus:border-ops-accent focus:ring-4 focus:ring-ops-ring";
@@ -66,8 +66,9 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1><p className="mt-1 text-ops-muted">Use your Hawma staff account.</p>
           <label htmlFor="ops-email" className="mb-1.5 mt-6 block text-[12.5px] font-medium">Email</label><input id="ops-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
           <label htmlFor="ops-password" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Password</label><input id="ops-password" type="password" autoComplete="current-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={field} />
+          {needCode && <><label htmlFor="ops-code" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Authentication code</label><input id="ops-code" autoFocus inputMode="text" autoComplete="one-time-code" placeholder="123456 or a recovery code" value={code} onChange={(e) => setCode(e.target.value)} className={field} /><p className="mt-1.5 text-xs text-ops-muted">From your authenticator app, or one of your recovery codes.</p></>}
           {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red">{err}</p>}
-          <OBtn variant="primary" className="mt-6 h-10 w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</OBtn>
+          <OBtn variant="primary" className="mt-6 h-10 w-full" disabled={busy}>{busy ? "Signing in…" : needCode ? "Verify and sign in" : "Sign in"}</OBtn>
         </form>
       </div>
     </div>
@@ -75,7 +76,7 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
 }
 
 /* ---------- shell ---------- */
-const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "disputes", label: "Disputes", icon: Scale }, { id: "finance", label: "Finance", icon: Banknote }, { id: "audit", label: "Audit log", icon: ScrollText }];
+const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "disputes", label: "Disputes", icon: Scale }, { id: "finance", label: "Finance", icon: Banknote }, { id: "audit", label: "Audit log", icon: ScrollText }, { id: "security", label: "Security", icon: KeyRound }];
 
 function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogout: () => void }) {
   const [page, setPage] = useState<Page>(() => (location.hash.slice(1) as Page) || "overview");
@@ -131,6 +132,7 @@ function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogo
             {page === "bookings" && <Bookings token={token} />}
             {page === "disputes" && <Disputes token={token} staff={staff} />}
             {page === "finance" && <Finance token={token} staff={staff} />}
+            {page === "security" && <Security token={token} staff={staff} />}
             {page === "audit" && <AuditLog token={token} staff={staff} />}
           </motion.div></AnimatePresence>
           {can(staff, "admin") && <SeedDemo token={token} onDone={(m) => toast(m)} />}
@@ -286,6 +288,40 @@ function Bookings({ token }: { token: string }) {
             {!open.events?.length && <li className="text-ops-muted">No transitions yet</li>}
           </ol>
         </motion.aside></>)}</AnimatePresence>
+    </>
+  );
+}
+
+/* ---------- security (two-factor) ---------- */
+function Security({ token, staff }: { token: string; staff: Staff }) {
+  const toast = useToast(); const [enabled, setEnabled] = useState(!!staff.mfa); const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string; qr: string } | null>(null); const [code, setCode] = useState(""); const [codes, setCodes] = useState<string[] | null>(null); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const start = async () => { setErr(""); try { const r = await call<{ secret: string; otpauthUrl: string }>(token, "/ops/mfa/setup", { method: "POST" }); const QR = await import("qrcode"); setSetup({ ...r, qr: await QR.toDataURL(r.otpauthUrl, { margin: 1, width: 192 }) }); } catch (e) { setErr((e as Error).message); } };
+  const enable = async () => { setBusy(true); setErr(""); try { const r = await call<{ recoveryCodes: string[] }>(token, "/ops/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }); setCodes(r.recoveryCodes); setEnabled(true); setSetup(null); setCode(""); toast("Two-factor authentication enabled"); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); } };
+  const disable = async () => { setBusy(true); setErr(""); try { await call(token, "/ops/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }); setEnabled(false); setCode(""); toast("Two-factor authentication disabled"); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); } };
+  return (
+    <>
+      <PageHead title="Security" sub="Protect your staff account with a second factor." />
+      <Card className="max-w-xl"><CardHeader><CardTitle>Two-factor authentication</CardTitle><Pill tone={enabled ? "green" : "amber"} dot>{enabled ? "Enabled" : "Not enabled"}</Pill></CardHeader>
+        <CardBody>
+          {codes ? (
+            <><p className="font-medium">Save your recovery codes</p><p className="mt-1 text-ops-muted">Each works once if you lose your authenticator. They won't be shown again.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-ops-hover p-3 font-mono text-[13px]">{codes.map((c) => <span key={c}>{c}</span>)}</div>
+              <div className="mt-3 flex gap-2"><OBtn onClick={() => { void navigator.clipboard.writeText(codes.join("\n")); toast("Copied"); }}>Copy codes</OBtn><OBtn variant="primary" onClick={() => setCodes(null)}>I saved them</OBtn></div></>
+          ) : enabled ? (
+            <><p className="text-ops-muted">Sign-in needs a code from your authenticator app. Money and identity actions are gated on this once the platform enforces it.</p>
+              <label htmlFor="mfa-off" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Enter a code to disable</label>
+              <div className="flex gap-2"><input id="mfa-off" value={code} onChange={(e) => setCode(e.target.value)} className="h-9 flex-1 rounded-lg border border-ops-border bg-ops-card px-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" /><OBtn variant="danger" disabled={busy || code.length < 6} onClick={disable}>Disable</OBtn></div></>
+          ) : setup ? (
+            <><p className="text-ops-muted">Scan this QR code with Google Authenticator, Authy or 1Password, then enter the 6-digit code.</p>
+              <div className="mt-3 flex flex-wrap items-center gap-4"><img src={setup.qr} alt="Authenticator QR code" className="h-48 w-48 rounded-lg border border-ops-border bg-white p-1" /><div className="min-w-0"><div className="text-xs text-ops-muted">Or enter this key manually</div><code className="mt-1 block break-all rounded bg-ops-hover px-2 py-1.5 font-mono text-[13px]">{setup.secret}</code></div></div>
+              <label htmlFor="mfa-on" className="mb-1.5 mt-4 block text-[12.5px] font-medium">6-digit code</label>
+              <div className="flex gap-2"><input id="mfa-on" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} className="h-9 flex-1 rounded-lg border border-ops-border bg-ops-card px-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" /><OBtn variant="primary" disabled={busy || code.length !== 6} onClick={enable}>Enable</OBtn></div></>
+          ) : (
+            <><p className="text-ops-muted">Add an authenticator app so a stolen password alone can't open this console.</p><OBtn variant="primary" className="mt-4" onClick={start}>Set up two-factor</OBtn></>
+          )}
+          <ErrBox m={err} />
+        </CardBody>
+      </Card>
     </>
   );
 }

@@ -6,7 +6,7 @@ const booking = { id: "b3333333-0000-0000-0000-000000000000", state: "Accepted",
 test("ops console flow against a mocked API", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "desktop only");
   const decisions: string[] = [];
-  await page.route("**/api/ops/login", (r) => r.request().postDataJSON().password === "correct-password" ? r.fulfill({ json: { token: "t" } }) : r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "invalid credentials" } }));
+  await page.route("**/api/ops/login", (r) => { const b = r.request().postDataJSON(); if (b.password !== "correct-password") return r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "invalid credentials" } }); if (b.email === "mfa@hawma.ma" && b.code !== "123456") return r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "mfa_required" } }); return r.fulfill({ json: { token: "t" } }); });
   await page.route("**/api/ops/me", (r) => r.fulfill({ json: { id: "s1", email: "admin@hawma.ma", roles: ["admin"] } }));
   const days = Array.from({ length: 14 }, (_, i) => ({ date: new Date(Date.UTC(2026, 10, 1 + i)).toISOString().slice(0, 10), count: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i], gmvCentimes: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i] * 14000 }));
   await page.route("**/api/ops/stats", (r) => r.fulfill({ json: { total: 126, byState: { Settled: 61, Accepted: 14, Requested: 9, Cancelled: 12, Completed: 22, Disputed: 3, InProgress: 5 }, gmvCentimes: 1_182_000, feesCentimes: 177_300, perDay: days, active: 19, pendingKyc: 1, fillRate: 0.78 } }));
@@ -17,6 +17,8 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   const resolved: unknown[] = [];
   await page.route("**/api/ops/disputes", (r) => r.fulfill({ json: [{ id: "x1", bookingId: "b9999999-0000-0000-0000-000000000000", openedBy: "c1", reason: "Le prestataire n'a pas terminé la cuisine", status: "open", createdAt: "2026-11-10T12:00:00Z" }] }));
   await page.route("**/api/ops/disputes/*/resolve", (r) => { resolved.push(r.request().postDataJSON()); r.fulfill({ json: { id: "x1", status: "resolved" } }); });
+  await page.route("**/api/ops/mfa/setup", (r) => r.fulfill({ json: { secret: "JBSWY3DPEHPK3PXP", otpauthUrl: "otpauth://totp/Hawma%20Ops:admin%40hawma.ma?secret=JBSWY3DPEHPK3PXP&issuer=Hawma%20Ops" } }));
+  await page.route("**/api/ops/mfa/enable", (r) => r.request().postDataJSON().code === "123456" ? r.fulfill({ json: { enabled: true, recoveryCodes: ["a1b2c-d3e4f", "11111-22222", "33333-44444", "55555-66666", "77777-88888", "99999-00000", "abcde-12345", "fedcb-54321"] } }) : r.fulfill({ status: 400, contentType: "application/problem+json", json: { title: "that code is not valid" } }));
   await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: kyc }));
   const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   await page.route("**/api/ops/kyc/*/documents", (r) => r.fulfill({ json: [{ id: "d1", kind: "cin_front", mime: "image/png", size: 70 }, { id: "d2", kind: "selfie", mime: "image/png", size: 70 }] }));
@@ -88,9 +90,39 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await rec.click();
   await expect.poll(() => posted.length).toBe(1);
   expect(posted[0]).toMatchObject({ providerId: "f7777777-0000-0000-0000-000000000000", amountCentimes: 4500, reason: "cash received at the office" });
+  await page.getByRole("button", { name: "Security" }).first().click();
+  await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
+  await page.getByRole("button", { name: "Set up two-factor" }).click();
+  await expect(page.getByRole("img", { name: "Authenticator QR code" })).toBeVisible();
+  await expect(page.getByText("JBSWY3DPEHPK3PXP")).toBeVisible();
+  await page.screenshot({ path: "screenshots/ops-4c-mfa-setup.png" });
+  await page.getByLabel("6-digit code").fill("000000"); await page.getByRole("button", { name: "Enable" }).click();
+  await expect(page.getByRole("alert")).toContainText("not valid");
+  await page.getByLabel("6-digit code").fill("123456"); await page.getByRole("button", { name: "Enable" }).click();
+  await expect(page.getByText("Save your recovery codes")).toBeVisible();
+  await expect(page.getByText("a1b2c-d3e4f")).toBeVisible();
+  await page.getByRole("button", { name: "I saved them" }).click();
   await page.getByRole("button", { name: "Audit log" }).first().click();
   await expect(page.getByText("kyc.approved")).toBeVisible();
   await page.screenshot({ path: "screenshots/ops-5-audit.png" });
   await page.getByRole("button", { name: "Sign out" }).first().click();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+});
+
+test("ops login asks for the authentication code when the account has MFA", async ({ page }, info) => {
+  test.skip(info.project.name !== "desktop", "desktop only");
+  await page.route("**/api/ops/login", (r) => { const b = r.request().postDataJSON(); if (b.password !== "correct-password") return r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "invalid credentials" } }); if (!b.code) return r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "mfa_required" } }); return b.code === "123456" ? r.fulfill({ json: { token: "t" } }) : r.fulfill({ status: 401, contentType: "application/problem+json", json: { title: "invalid credentials" } }); });
+  await page.route("**/api/ops/me", (r) => r.fulfill({ json: { id: "s1", email: "mfa@hawma.ma", roles: ["admin"], mfa: true } }));
+  await page.route("**/api/ops/stats", (r) => r.fulfill({ json: { total: 0, byState: {}, gmvCentimes: 0, feesCentimes: 0, perDay: Array.from({ length: 14 }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, "0")}`, count: 0, gmvCentimes: 0 })), active: 0, pendingKyc: 0, fillRate: null } }));
+  await page.route("**/api/ops/finance", (r) => r.fulfill({ json: { platformRevenue: 0, cashHeld: 0, earnings: 0 } }));
+  await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: [] }));
+  await page.route(/\/api\/ops\/bookings(\?.*)?$/, (r) => r.fulfill({ json: [] }));
+  await page.goto("/ops");
+  await page.getByLabel("Email").fill("mfa@hawma.ma"); await page.getByLabel("Password").fill("correct-password"); await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByLabel("Authentication code")).toBeVisible();
+  await page.screenshot({ path: "screenshots/ops-0-mfa-login.png" });
+  await page.getByLabel("Authentication code").fill("000000"); await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page.getByRole("alert")).toContainText("invalid credentials");
+  await page.getByLabel("Authentication code").fill("123456"); await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });
