@@ -57,3 +57,11 @@ export const cashOwed = (txns: Txn[], provider: string): Centimes => {
   const earned = -balanceOf(txns, "provider_earnings", provider);
   return held - earned; // cash collected minus what the provider is entitled to keep
 };
+
+/** Customer was owed money back for a cash job: the provider now owes it (the platform will repay the customer). Increases provider_cash_held debt, books a refund liability. */
+export function cashRefund(id: string, provider: string, amount: Centimes): Txn {
+  return assertBalanced({ id, kind: "cash_refund", entries: [
+    { account: "provider_cash_held", owner: provider, amount },
+    { account: "refund_reserve", amount: -amount },
+  ] });
+}

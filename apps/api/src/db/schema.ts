@@ -139,3 +139,9 @@ export const kycDocuments = identity.table("kyc_document", {
   kind: text("kind").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
   nonce: text("nonce").notNull(), ciphertext: customType<{ data: Buffer }>({ dataType: () => "bytea" })("ciphertext").notNull(), createdAt: createdAt(),
 }, (t) => [index("kycdoc_verification_idx").on(t.verificationId)]);
+
+export const disputes = booking.table("dispute", {
+  id: id(), bookingId: uuid("booking_id").notNull().references(() => bookings.id), openedBy: uuid("opened_by").notNull(), reason: text("reason").notNull(),
+  status: text("status").notNull().default("open"), outcome: text("outcome"), refundCentimes: integer("refund_centimes"), resolutionNote: text("resolution_note"), resolvedBy: uuid("resolved_by"),
+  createdAt: createdAt(), resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (t) => [uniqueIndex("dispute_one_per_booking_uq").on(t.bookingId), index("dispute_status_idx").on(t.status)]);

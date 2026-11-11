@@ -1,4 +1,7 @@
 import { Module } from "@nestjs/common";
+import { DisputesController } from "./modules/disputes/disputes.controller";
+import { DisputesService, MemoryDisputeRepo } from "./modules/disputes/disputes.service";
+import { PgDisputeRepo } from "./modules/disputes/pg-disputes.repo";
 import { LedgerService, MemoryLedgerRepo } from "./modules/ledger/ledger.service";
 import { PgLedgerRepo } from "./modules/ledger/pg-ledger.repo";
 import { DispatchController } from "./modules/dispatch/dispatch.controller";
@@ -54,6 +57,7 @@ function memoryProviderPort(): ProviderPort {
 }
 
 export const OVERRIDES = {
+  disputeRepo: new MemoryDisputeRepo(),
   ledgerRepo: new MemoryLedgerRepo(),
   bus: new MemoryBus(), presence: new MemoryPresence(), offerRepo: new MemoryOfferRepo(),
   providerPort: memoryProviderPort(),
@@ -64,8 +68,11 @@ export const OVERRIDES = {
 OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRepo as MemoryAuditRepo);
 
 @Module({
-  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController, DispatchController],
+  controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController, DispatchController, DisputesController],
   providers: [
+    { provide: "DISPUTE_REPO", useFactory: () => (db ? new PgDisputeRepo(db) : OVERRIDES.disputeRepo) },
+    { provide: "LEDGER", useFactory: (l: LedgerService) => l, inject: [LedgerService] },
+    DisputesService,
     { provide: "LEDGER_REPO", useFactory: () => (db ? new PgLedgerRepo(db) : OVERRIDES.ledgerRepo) },
     LedgerService,
     { provide: "BUS", useFactory: () => (process.env.REDIS_URL ? new RedisBus(new Redis(process.env.REDIS_URL), new Redis(process.env.REDIS_URL)) : OVERRIDES.bus) },

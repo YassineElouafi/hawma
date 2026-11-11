@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BadgeCheck, Banknote, ClipboardList, Command, Gauge, LayoutDashboard, LogOut, Menu, Moon, ScrollText, Search, ShieldCheck, Sprout, Sun, Users2, X } from "lucide-react";
+import { Activity, BadgeCheck, Banknote, ClipboardList, Command, Gauge, LayoutDashboard, LogOut, Scale, Menu, Moon, ScrollText, Search, ShieldCheck, Sprout, Sun, Users2, X } from "lucide-react";
 import { Avatar, AreaChart, BarList, Card, CardBody, CardHeader, CardTitle, Empty, OBtn, Pill, Segmented, Skeleton, StatTile, Table, Td, Th, Tr, stateTone } from "@/components/arc/primitives";
 import { CommandPalette, Toaster, useTheme, useToast, type Cmd } from "@/components/arc/overlays";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ type Kyc = { id: string; userId: string; tier: number; status: string; documents
 type Booking = { id: string; state: string; mode: string; customerId: string; providerId: string | null; totalCentimes: number; feeCentimes: number; paymentMethod: string; events?: { type: string; actor: string; at: string }[] };
 type Audit = { id: number; at: string; actorId: string; action: string; target: string; reason?: string };
 type Stats = { total: number; byState: Record<string, number>; gmvCentimes: number; feesCentimes: number; perDay: { date: string; count: number; gmvCentimes: number }[]; active: number; pendingKyc: number; fillRate: number | null };
-type Page = "overview" | "kyc" | "bookings" | "finance" | "audit";
+type Page = "overview" | "kyc" | "bookings" | "disputes" | "finance" | "audit";
 
 async function call<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(API + path, { ...init, headers: { ...(init?.body ? { "content-type": "application/json" } : {}), authorization: `Bearer ${token}`, ...init?.headers } });
@@ -75,7 +75,7 @@ function Login({ onToken }: { onToken: (t: string) => void }) {
 }
 
 /* ---------- shell ---------- */
-const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "finance", label: "Finance", icon: Banknote }, { id: "audit", label: "Audit log", icon: ScrollText }];
+const NAV: { id: Page; label: string; icon: typeof Gauge }[] = [{ id: "overview", label: "Overview", icon: LayoutDashboard }, { id: "kyc", label: "Verifications", icon: ShieldCheck }, { id: "bookings", label: "Bookings", icon: ClipboardList }, { id: "disputes", label: "Disputes", icon: Scale }, { id: "finance", label: "Finance", icon: Banknote }, { id: "audit", label: "Audit log", icon: ScrollText }];
 
 function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogout: () => void }) {
   const [page, setPage] = useState<Page>(() => (location.hash.slice(1) as Page) || "overview");
@@ -129,6 +129,7 @@ function Shell({ token, staff, onLogout }: { token: string; staff: Staff; onLogo
             {page === "overview" && <Overview token={token} go={setPage} />}
             {page === "kyc" && <KycQueue token={token} staff={staff} onChange={(n) => setPending(n)} />}
             {page === "bookings" && <Bookings token={token} />}
+            {page === "disputes" && <Disputes token={token} staff={staff} />}
             {page === "finance" && <Finance token={token} staff={staff} />}
             {page === "audit" && <AuditLog token={token} staff={staff} />}
           </motion.div></AnimatePresence>
@@ -285,6 +286,46 @@ function Bookings({ token }: { token: string }) {
             {!open.events?.length && <li className="text-ops-muted">No transitions yet</li>}
           </ol>
         </motion.aside></>)}</AnimatePresence>
+    </>
+  );
+}
+
+/* ---------- disputes ---------- */
+type DisputeRow = { id: string; bookingId: string; openedBy: string; reason: string; status: string; createdAt: string; outcome?: string };
+function Disputes({ token, staff }: { token: string; staff: Staff }) {
+  const allowed = can(staff, "support", "trust_safety"); const toast = useToast();
+  const { data, err, reload } = useLoad<DisputeRow[]>(token, "/ops/disputes");
+  const [sel, setSel] = useState<DisputeRow | null>(null); const [outcome, setOutcome] = useState<"reject" | "refund_full" | "refund_partial">("reject"); const [amount, setAmount] = useState(""); const [note, setNote] = useState(""); const [busy, setBusy] = useState(false); const [e2, setE2] = useState("");
+  const submit = async () => {
+    if (!sel) return; setBusy(true); setE2("");
+    try { await call(token, `/ops/disputes/${sel.id}/resolve`, { method: "POST", body: JSON.stringify({ outcome, note, ...(outcome === "refund_partial" ? { refundCentimes: Math.round(Number(amount) * 100) } : {}) }) }); toast("Dispute resolved"); setSel(null); reload(); }
+    catch (x) { setE2((x as Error).message); } finally { setBusy(false); }
+  };
+  const valid = note.trim().length >= 5 && (outcome !== "refund_partial" || Number(amount) > 0);
+  const labels = { reject: "Reject — pay the provider", refund_full: "Full refund — provider repays", refund_partial: "Partial refund" } as const;
+  return (
+    <>
+      <PageHead title="Disputes" sub="Customer reports on completed jobs. Settlement is frozen until you decide." />
+      <ErrBox m={err} />
+      <Card><Table><thead><tr><Th>Booking</Th><Th>Customer says</Th><Th>Opened</Th><Th /></tr></thead><tbody>
+        {!data && !err && <Rows n={3} cols={4} />}
+        {data?.map((d) => <Tr key={d.id}><Td className="font-mono text-xs">{short(d.bookingId)}</Td><Td className="max-w-md text-ops-muted">{d.reason}</Td><Td className="whitespace-nowrap text-ops-muted">{when(d.createdAt)}</Td><Td className="text-end"><OBtn size="sm" variant="primary" disabled={!allowed} onClick={() => { setSel(d); setOutcome("reject"); setAmount(""); setNote(""); setE2(""); }}>Decide</OBtn></Td></Tr>)}
+        {data?.length === 0 && <tr><td colSpan={4}><Empty icon={<Scale size={18} />} title="No open disputes" hint="Reports from customers will appear here." /></td></tr>}
+      </tbody></Table></Card>
+      <AnimatePresence>{sel && (
+        <motion.div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="Resolve dispute">
+          <motion.div initial={{ scale: 0.97, y: 10 }} animate={{ scale: 1, y: 0 }} className="ops-root w-full max-w-md rounded-xl border border-ops-border bg-ops-card p-5 shadow-2xl">
+            <div className="flex items-start justify-between"><div><h2 className="text-base font-semibold">Resolve dispute</h2><p className="mt-0.5 font-mono text-xs text-ops-muted">booking {short(sel.bookingId)}</p></div><OBtn variant="ghost" size="sm" aria-label="Close" onClick={() => setSel(null)}><X size={15} /></OBtn></div>
+            <p className="mt-3 rounded-lg bg-ops-hover p-3 text-ops-muted">“{sel.reason}”</p>
+            <fieldset className="mt-4 space-y-2"><legend className="mb-1 text-[12.5px] font-medium">Decision</legend>
+              {(Object.keys(labels) as (keyof typeof labels)[]).map((k) => <label key={k} className={cn("flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 transition", outcome === k ? "border-ops-accent bg-ops-accent/8" : "border-ops-border")}><input type="radio" name="outcome" checked={outcome === k} onChange={() => setOutcome(k)} className="accent-[var(--ops-accent)]" />{labels[k]}</label>)}</fieldset>
+            {outcome === "refund_partial" && <><label htmlFor="d-amount" className="mb-1.5 mt-3 block text-[12.5px] font-medium">Refund amount (MAD)</label><input id="d-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9 w-full rounded-lg border border-ops-border bg-ops-card px-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" /></>}
+            <label htmlFor="d-note" className="mb-1.5 mt-4 block text-[12.5px] font-medium">Decision note <span className="font-normal text-ops-muted">(audit-logged)</span></label>
+            <textarea id="d-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="w-full resize-none rounded-lg border border-ops-border bg-ops-card px-3 py-2 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
+            <ErrBox m={e2} />
+            <OBtn variant="primary" className="mt-4 h-9 w-full" disabled={busy || !valid} onClick={submit}>Confirm decision</OBtn>
+          </motion.div>
+        </motion.div>)}</AnimatePresence>
     </>
   );
 }

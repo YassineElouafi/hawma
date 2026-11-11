@@ -152,3 +152,24 @@ describe("cash fee settlement via ops", () => {
     expect(audits[0]).toMatchObject({ reason: "cash received at office" });
   });
 });
+
+describe("disputes over HTTP", () => {
+  it("customer opens, support resolves with a reason; finance cannot; audit recorded", async () => {
+    const mkUser = async (phone: string) => { await req("POST", "/v1/auth/otp/request", undefined, { phone }); return (await req("POST", "/v1/auth/otp/verify", undefined, { phone, code: OVERRIDES.otpSender.last.get(phone.replace(/^0/, "+212"))! })).json(); };
+    const c = await mkUser("0691010101"), p = await mkUser("0692020202");
+    const b = (await req("POST", "/v1/bookings", c.accessToken, { mode: "catalogue", providerId: p.userId, totalCentimes: 10000, paymentMethod: "cash" })).json();
+    for (const cmd of ["accept", "start-trip", "arrive", "start-job", "complete"]) await req("POST", `/v1/bookings/${b.id}/${cmd}`, p.accessToken);
+    expect((await req("POST", `/v1/bookings/${b.id}/disputes`, p.accessToken, { reason: "I am the provider not the customer" })).statusCode).toBe(403);
+    expect((await req("POST", `/v1/bookings/${b.id}/disputes`, c.accessToken, { reason: "short" })).statusCode).toBe(400);
+    const d = await req("POST", `/v1/bookings/${b.id}/disputes`, c.accessToken, { reason: "Le prestataire n'a pas terminé le travail" }); expect(d.statusCode).toBe(201);
+    await mk("sup3@hawma.ma", ["support"]); const sup = await login("sup3@hawma.ma"); await mk("ro@hawma.ma", ["read_only"]); const ro = await login("ro@hawma.ma");
+    expect((await req("GET", "/ops/disputes", ro)).statusCode).toBe(403);
+    expect((await req("GET", "/ops/disputes", sup)).json().map((x: { id: string }) => x.id)).toContain(d.json().id);
+    expect((await req("POST", `/ops/disputes/${d.json().id}/resolve`, ro, { outcome: "reject", note: "not allowed for read only" })).statusCode).toBe(403);
+    expect((await req("POST", `/ops/disputes/${d.json().id}/resolve`, sup, { outcome: "refund_partial", note: "partial refund is fair" })).statusCode).toBe(422);   // amount missing
+    const ok = await req("POST", `/ops/disputes/${d.json().id}/resolve`, sup, { outcome: "refund_partial", refundCentimes: 4000, note: "partial refund is fair" }); expect(ok.statusCode).toBe(200);
+    expect((await req("GET", `/ops/bookings/${b.id}`, sup)).json().state).toBe("Settled");
+    expect(OVERRIDES.auditRepo.items.at(-1)).toMatchObject({ action: "dispute.refund_partial", target: b.id, reason: "partial refund is fair" });
+    expect((await req("POST", `/ops/disputes/${d.json().id}/resolve`, sup, { outcome: "reject", note: "second try here" })).statusCode).toBe(409);
+  });
+});

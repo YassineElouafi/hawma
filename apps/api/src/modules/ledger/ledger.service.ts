@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnprocessableEntityException } from "@nestjs/common";
 import { createHash } from "node:crypto";
-import { assertBalanced, settleCardJob, settleCashJob, type Account, type Txn } from "../../domain/ledger";
+import { assertBalanced, cashRefund, settleCardJob, settleCashJob, type Account, type Txn } from "../../domain/ledger";
 import type { BookingRepo } from "../bookings/bookings.service";
 
 /** Deterministic UUID from a business key so the same booking always maps to the same ledger transaction (idempotency). */
@@ -47,9 +47,18 @@ export class LedgerService {
     return (await this.repo.post(txn)) ? "posted" : "duplicate";
   }
 
+  /** After a dispute: pay the provider for the undisputed part (normal fee rules) and book what they must repay the customer. Idempotent per dispute. */
+  async applyDisputeOutcome(bookingId: string, disputeId: string, refundCentimes: number) {
+    const b = await this.bookings.get(bookingId); if (!b || !b.providerId || b.paymentMethod !== "cash") return "skipped" as const;
+    const kept = b.totalCentimes - refundCentimes;
+    if (kept > 0) await this.repo.post(settleCashJob(txnIdFor(`dispute:${disputeId}:settle`), b.providerId, kept));
+    if (refundCentimes > 0) await this.repo.post(cashRefund(txnIdFor(`dispute:${disputeId}:refund`), b.providerId, refundCentimes));
+    return "posted" as const;
+  }
+
   async providerMoney(providerId: string): Promise<ProviderMoney> {
     const [held, earn] = await Promise.all([this.repo.balance("provider_cash_held", providerId), this.repo.balance("provider_earnings", providerId)]);
-    return { netEarningsCentimes: -earn, cashOwedCentimes: Math.max(0, held + earn), jobsSettled: 0 };
+    return { netEarningsCentimes: -earn || 0, cashOwedCentimes: Math.max(0, held + earn), jobsSettled: 0 };
   }
   async cashOwedFor(ids: string[]) { const [h, e] = await Promise.all([this.repo.balances("provider_cash_held", ids), this.repo.balances("provider_earnings", ids)]); return new Map(ids.map((id) => [id, Math.max(0, (h.get(id) ?? 0) + (e.get(id) ?? 0))])); }
   totals() { return this.repo.totals(); }

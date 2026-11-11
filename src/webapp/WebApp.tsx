@@ -15,12 +15,14 @@ const T: Record<Lang, Record<string, string>> = {
     home: "Accueil", bookings: "Réservations", profile: "Profil", active: "En cours", past: "Terminées", noActive: "Aucune réservation en cours", noPast: "Historique vide", cancel: "Annuler", confirm: "Confirmer", rate: "Noter", rated: "Merci pour ton avis ✔", rateTitle: "Comment s'est passé le service ?", sendRating: "Envoyer",
     language: "Langue", logout: "Se déconnecter", account: "Compte", back: "Retour", reviews: "avis", jobs: "missions", c_cleaning: "Ménage", c_diy: "Bricolage", c_garden: "Jardin", c_tutoring: "Cours", c_errands: "Courses", c_rides: "Transport", c_pets: "Animaux", c_lending: "Prêt",
     urgent: "Besoin d'aide maintenant ?", urgentHint: "On cherche le prestataire le plus proche, en direct.", requestNow: "Lancer la demande", urgentSent: "Recherche en cours… ✔", price: "Prix (MAD)", searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", anon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.",
+    report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Paiement suspendu le temps de l'examen.", underReview: "En cours d'examen par notre équipe",
     s_Requested: "En attente", s_Accepted: "Acceptée", s_EnRoute: "En route", s_Arrived: "Arrivé", s_InProgress: "En cours", s_Completed: "Terminée", s_Confirmed: "Confirmée", s_Settled: "Réglée", s_Cancelled: "Annulée", s_Declined: "Refusée", s_Disputed: "Litige", s_Expired: "Expirée", s_Refunded: "Remboursée", s_Offered: "Proposée" },
   ar: { tag: "حيّك، فريقك.", phone: "رقم الهاتف", send: "أرسل الرمز", code: "رمز من 6 أرقام", verify: "تأكيد", devCode: "رمز تجريبي", bad: "رقم مغربي غير صالح", wrong: "الرمز خاطئ أو منتهي", net: "تعذّر الاتصال",
     hello: "مرحبا 👋", find: "ماذا تحتاج؟", search: "ابحث عن خدمة…", all: "الكل", near: "قريب منك", empty: "لا خدمات.", book: "احجز", booked: "تم إرسال الطلب ✔", cash: "الدفع نقدا عند الانتهاء", mad: "درهم", km: "كلم", verified: "موثّق", avail: "متاح هذا الأسبوع",
     home: "الرئيسية", bookings: "الحجوزات", profile: "حسابي", active: "جارية", past: "منتهية", noActive: "لا حجوزات جارية", noPast: "السجل فارغ", cancel: "إلغاء", confirm: "تأكيد", rate: "قيّم", rated: "شكرا على تقييمك ✔", rateTitle: "كيف كانت الخدمة؟", sendRating: "إرسال",
     language: "اللغة", logout: "تسجيل الخروج", account: "الحساب", back: "رجوع", reviews: "تقييم", jobs: "مهمة", c_cleaning: "تنظيف", c_diy: "إصلاحات", c_garden: "حديقة", c_tutoring: "دروس", c_errands: "مشتريات", c_rides: "نقل", c_pets: "حيوانات", c_lending: "إعارة",
     urgent: "تحتاج مساعدة الآن؟", urgentHint: "نبحث عن أقرب مقدّم خدمة مباشرة.", requestNow: "ابدأ الطلب", urgentSent: "جارٍ البحث… ✔", price: "السعر (درهم)", searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", anon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.",
+    report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", underReview: "قيد المراجعة من فريقنا",
     s_Requested: "قيد الانتظار", s_Accepted: "مقبولة", s_EnRoute: "في الطريق", s_Arrived: "وصل", s_InProgress: "قيد التنفيذ", s_Completed: "منتهية", s_Confirmed: "مؤكدة", s_Settled: "مسوّاة", s_Cancelled: "ملغاة", s_Declined: "مرفوضة", s_Disputed: "نزاع", s_Expired: "منتهية", s_Refunded: "مستردة", s_Offered: "مقترحة" },
   da: {} as Record<string, string>,
 };
@@ -174,7 +176,7 @@ function Explore() {
 }
 
 function Bookings() {
-  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active"); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
+  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active"); const [report, setReport] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
   const load = useCallback(async () => { try { setItems(await api("/v1/bookings")); } catch { setItems([]); } }, []);
   useEffect(() => { load(); const i = setInterval(load, 10000); return () => clearInterval(i); }, [load]);
   const live = useLive((items ?? []).map((b) => b.id), load);
@@ -192,6 +194,8 @@ function Bookings() {
             <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
               {["Requested", "Accepted"].includes(b.state) && <OBtn size="sm" onClick={() => run(b.id, "cancel")}>{tr("cancel")}</OBtn>}
               {b.state === "Completed" && <OBtn size="sm" variant="primary" onClick={() => run(b.id, "confirm")}>{tr("confirm")}</OBtn>}
+              {b.state === "Completed" && <OBtn size="sm" onClick={() => { setReportText(""); setReport(b); }}>⚠️ {tr("report")}</OBtn>}
+              {b.state === "Disputed" && <span className="text-xs font-semibold text-ops-amber">⏳ {tr("underReview")}</span>}
               {["Confirmed", "Settled"].includes(b.state) && <OBtn size="sm" onClick={() => { setStars(5); setNote(""); setRate(b); }}><Star size={13} />{tr("rate")}</OBtn>}
             </div>
           </Card>
@@ -199,6 +203,13 @@ function Bookings() {
         {items && shown.length === 0 && <Empty icon={<Receipt size={18} />} title={seg === "active" ? tr("noActive") : tr("noPast")} />}
       </div>
       <AnimatePresence>{detail && <BookingDetail key={detail} booking={(items ?? []).find((b) => b.id === detail) ?? null} live={live[detail]} onClose={() => setDetail(null)} onCancel={async (id) => { await run(id, "cancel"); setDetail(null); }} />}</AnimatePresence>
+      <AnimatePresence>{report && (<>
+        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReport(null)} />
+        <motion.div role="dialog" aria-label={tr("reportTitle")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }}>
+          <h3 className="text-xl font-bold">⚠️ {tr("reportTitle")}</h3><p className="mt-1.5 text-sm text-ops-muted">{tr("reportHint")}</p>
+          <textarea aria-label={tr("report")} value={reportText} onChange={(e) => setReportText(e.target.value)} rows={4} className="mt-4 w-full resize-none rounded-xl border border-ops-border bg-ops-card p-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
+          <OBtn variant="primary" className="mt-4 h-12 w-full rounded-full text-base" disabled={reportText.trim().length < 10} onClick={async () => { try { await post(`/v1/bookings/${report.id}/disputes`, { reason: reportText.trim() }); toast(tr("reportSent")); load(); } catch (e) { toast(e instanceof ApiError ? e.message : tr("net"), "err"); } setReport(null); }}>{tr("reportSend")}</OBtn>
+        </motion.div></>)}</AnimatePresence>
       <AnimatePresence>{rate && (<>
         <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRate(null)} />
         <motion.div role="dialog" aria-label={tr("rateTitle")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 360 }} animate={{ y: 0 }} exit={{ y: 360 }}>

@@ -234,7 +234,7 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
 
 /* ---------- bookings ---------- */
 function Bookings({ insetTop }: { insetTop: number }) {
-  const { t } = useT(); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, Live>>({}); const [detail, setDetail] = useState<Booking | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
+  const { t } = useT(); const [reportFor, setReportFor] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [reporting, setReporting] = useState(false); const [rateFor, setRateFor] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState(""); const [rating, setRating] = useState(false); const [items, setItems] = useState<Booking[] | null>(null); const [busy, setBusy] = useState(false); const [live, setLive] = useState<Record<string, Live>>({}); const [detail, setDetail] = useState<Booking | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
   const load = useCallback(async () => { setBusy(true); try { setItems(await api("/v1/bookings")); } catch { setItems([]); } finally { setBusy(false); } }, []);
   useEffect(() => { load(); }, [load]);
   const ws = useRef<WebSocket | null>(null);
@@ -262,6 +262,8 @@ function Bookings({ insetTop }: { insetTop: number }) {
               </View>
               {ACTIVE.includes(item.state) && <Stepper state={item.state} />}
               {["Requested", "Accepted"].includes(item.state) && <Button label={t("cancelBooking")} variant="outline" small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/cancel`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
+              {item.state === "Completed" && <Button label={`⚠️ ${t("report")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setReportText(""); setReportFor(item); }} />}
+              {item.state === "Disputed" && <Text style={{ color: C.amber, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>⏳ {t("s_Disputed_hint")}</Text>}
               {item.state === "Completed" && <Button label={t("confirmDone")} small style={{ marginTop: 12 }} onPress={async () => { try { await post(`/v1/bookings/${item.id}/confirm`); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />}
               {["Confirmed", "Settled"].includes(item.state) && <Button label={`⭐ ${t("rate")}`} variant="outline" small style={{ marginTop: 12 }} onPress={() => { setStars(5); setNote(""); setRateFor(item); }} />}
               {live[`booking:${item.id}`] && <Text style={{ color: C.green, fontWeight: "700", marginTop: 10, fontSize: 12.5 }}>📡 {t("liveOn")}</Text>}
@@ -269,6 +271,15 @@ function Bookings({ insetTop }: { insetTop: number }) {
           </FadeIn>
         )} />
       <BookingDetail booking={detail ? (items ?? []).find((b) => b.id === detail.id) ?? detail : null} live={detail ? live[`booking:${detail.id}`] : undefined} onClose={() => setDetail(null)} onCancel={async (id) => { try { await post(`/v1/bookings/${id}/cancel`); setDetail(null); load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } }} />
+      <Sheet visible={!!reportFor} onClose={() => setReportFor(null)}>
+        <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink }}>⚠️ {t("reportTitle")}</Text><Text style={{ color: C.mute, marginTop: 6, lineHeight: 20 }}>{t("reportHint")}</Text>
+        <Field label={t("report")} value={reportText} onChangeText={setReportText} multiline style={{ minHeight: 110, fontSize: 15 }} />
+        <Button label={t("reportSend")} busy={reporting} disabled={reportText.trim().length < 10} style={{ marginTop: 16 }} onPress={async () => {
+          if (!reportFor) return; setReporting(true);
+          try { await post(`/v1/bookings/${reportFor.id}/disputes`, { reason: reportText.trim() }); setReportFor(null); Alert.alert(t("reportSent")); load(); }
+          catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setReporting(false); }
+        }} />
+      </Sheet>
       <Sheet visible={!!rateFor} onClose={() => setRateFor(null)}>
         <Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, textAlign: "center" }}>{t("rateTitle")}</Text>
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 16 }}>

@@ -1,6 +1,7 @@
 export type Lang = "fr" | "ar" | "da";
 export const LANGS: { id: Lang; label: string }[] = [{ id: "fr", label: "FR" }, { id: "da", label: "الدارجة" }, { id: "ar", label: "العربية" }];
 const fr = {
+  report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Le paiement est suspendu le temps de l'examen.", s_Disputed_hint: "En cours d'examen par notre équipe",
   earnings: "Mes revenus", netEarnings: "Net après frais", feeOwed: "Frais dus à Hawma", feeWarn: "Au-delà de 300 MAD de frais, tu ne reçois plus de missions urgentes jusqu'au règlement.",
   searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", providerAnon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.", details: "Détails",
   urgent: "Besoin d'aide maintenant ?", urgentHint: "On cherche le prestataire le plus proche, en direct.", requestNow: "Lancer la demande", urgentSent: "Recherche en cours… ✔", offerIncoming: "Nouvelle mission !", secShort: "s", offerGone: "Cette mission n'est plus disponible", unfilledMsg: "Personne n'est disponible pour l'instant",
@@ -21,6 +22,7 @@ const fr = {
 };
 type Dict = typeof fr;
 const ar: Dict = {
+  report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", s_Disputed_hint: "قيد المراجعة من فريقنا",
   earnings: "أرباحي", netEarnings: "الصافي بعد الرسوم", feeOwed: "رسوم مستحقة لحومة", feeWarn: "إذا تجاوزت الرسوم 300 درهم فلن تصلك مهام عاجلة حتى تسوّيها.",
   searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", providerAnon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.", details: "التفاصيل",
   urgent: "تحتاج مساعدة الآن؟", urgentHint: "نبحث عن أقرب مقدّم خدمة مباشرة.", requestNow: "ابدأ الطلب", urgentSent: "جارٍ البحث… ✔", offerIncoming: "مهمة جديدة!", secShort: "ث", offerGone: "لم تعد هذه المهمة متاحة", unfilledMsg: "لا أحد متاح حاليا",
@@ -41,6 +43,7 @@ const ar: Dict = {
 };
 const da: Dict = {
   ...ar,
+  report: "بلّغ على مشكل", reportTitle: "شنو وقع؟", reportHint: "وصف المشكل فشي جمل. الفريق ديالنا كيراجع كل بلاغ.", reportSend: "صيفط البلاغ", reportSent: "تصيفط البلاغ ✔ الخلاص تّوقف حتى تتراجع.",
   earnings: "الأرباح ديالي", netEarnings: "الصافي من بعد الرسوم", feeOwed: "الرسوم اللي عليك لحومة", feeWarn: "إلا فاتو الرسوم 300 درهم ما غاديش توصلك خدمات مستعجلة حتى تخلّص.",
   searching: "كنقلّبو على المقدّم ديالك…", searchingHint: "المقدّمين القراب كيتوصلو بالطلب واحد واحد.", arrivesIn: "غايوصل فـ", away: "منك", unfilledTitle: "ما كاين حد متاح", unfilledHint: "عاود من بعد شي دقايق ولا اختار مقدّم من الكتالوج.",
   urgent: "محتاج مساعدة دابا؟", urgentHint: "كنقلّبو على أقرب مقدّم بالمباشر.", requestNow: "بدا الطلب", urgentSent: "كنقلّبو… ✔", offerIncoming: "خدمة جديدة!", offerGone: "هاد الخدمة ما بقاتش متاحة", unfilledMsg: "ما كاين حد متاح دابا",

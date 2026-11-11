@@ -71,6 +71,13 @@
       "when": 1794346125476,
       "tag": "0009_one_open_offer_per_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794363942402,
+      "tag": "0010_dispute",
+      "breakpoints": true
     }
   ]
 }

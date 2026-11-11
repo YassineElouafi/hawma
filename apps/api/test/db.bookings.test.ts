@@ -104,3 +104,24 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("disputes on real Postgres", () => {
+  it("one dispute per booking, atomic resolution, ledger posted once", async () => {
+    const { LedgerService } = await import("../src/modules/ledger/ledger.service"); const { PgLedgerRepo } = await import("../src/modules/ledger/pg-ledger.repo");
+    const { DisputesService } = await import("../src/modules/disputes/disputes.service"); const { PgDisputeRepo } = await import("../src/modules/disputes/pg-disputes.repo");
+    const client = postgres(url!, { max: 8 }); const db2 = drizzle(client); const repo = new PgBookingRepo(db2); const bookings = new BookingsService(repo); const ledger = new LedgerService(new PgLedgerRepo(db2), repo); const disputes = new DisputesService(new PgDisputeRepo(db2), bookings, ledger);
+    const cust = randomUUID(), prov = randomUUID(), staff = randomUUID();
+    const b = await bookings.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 10000, paymentMethod: "cash" });
+    for (const c of ["accept", "start_trip", "arrive", "start_job", "complete"] as const) await bookings.command(b.id, c, prov);
+    const opens = await Promise.allSettled([disputes.open(cust, b.id, "Le prestataire n'a pas fini le travail"), disputes.open(cust, b.id, "Le prestataire n'a pas fini le travail")]);
+    expect(opens.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const d = (await disputes.forBooking(b.id))!;
+    const res = await Promise.allSettled([disputes.resolve(staff, d.id, "refund_partial", "half the job", 4000), disputes.resolve(randomUUID(), d.id, "refund_full", "conflicting decision")]);
+    expect(res.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const final = await disputes.forBooking(b.id); expect(final?.status).toBe("resolved");
+    const m = await ledger.providerMoney(prov);
+    expect(m.netEarningsCentimes === 5100 || (m.netEarningsCentimes === 0 && final?.outcome === "refund_full")).toBe(true);      // whichever won, exactly one outcome was posted
+    expect([6000 * 0.15 + 4000, 10000]).toContain(m.cashOwedCentimes);
+    await client.end();
+  });
+});
