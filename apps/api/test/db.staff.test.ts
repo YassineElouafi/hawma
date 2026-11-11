@@ -25,3 +25,21 @@ const url = process.env.DATABASE_URL;
     await expect(repo.upsert("w@hawma.ma", "long-enough-password", ["root" as never])).rejects.toThrow(/unknown role/);
   });
 });
+
+(url ? describe : describe.skip)("staff MFA on real Postgres", () => {
+  it("enrolment persists, login needs the code, recovery codes are single-use across instances", async () => {
+    const { totp } = await import("../src/modules/ops/totp"); const { DocCrypto } = await import("../src/modules/documents/crypto");
+    const client = postgres(url!, { max: 2 }); const repo = new PgStaffRepo(drizzle(client)); const key = Buffer.alloc(32, 7).toString("base64");
+    const email = `mfa${Date.now()}@hawma.ma`; await repo.upsert(email, "a-very-long-password-1", ["finance"]);
+    const svcA = new StaffService(repo, new DocCrypto(key), {} as NodeJS.ProcessEnv);
+    const staff = await svcA.authenticate((await svcA.login(email, "a-very-long-password-1")).token);
+    const { secret } = await svcA.mfaSetup(staff); const { recoveryCodes } = await svcA.mfaEnable(staff, totp(secret));
+    const svcB = new StaffService(repo, new DocCrypto(key), {} as NodeJS.ProcessEnv);                       // a different server instance, same DB + key
+    await expect(svcB.login(email, "a-very-long-password-1")).rejects.toThrow(/mfa_required/);
+    expect((await svcB.login(email, "a-very-long-password-1", totp(secret))).staff.mfa).toBe(true);
+    await svcB.login(email, "a-very-long-password-1", recoveryCodes[0]);
+    await expect(svcA.login(email, "a-very-long-password-1", recoveryCodes[0])).rejects.toThrow(/invalid credentials/);   // used on B, rejected on A
+    const [row] = await client`select mfa_secret from platform.staff_user where email = ${email}`; expect(row.mfa_secret).not.toContain(secret);   // encrypted at rest
+    await client.end();
+  });
+});
