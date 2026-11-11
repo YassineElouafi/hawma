@@ -26,6 +26,7 @@ test("web app login + home", async ({ page }) => {
   const login = await scan(page, "app-login");
   await page.getByLabel(/Numéro de téléphone/).fill("0611223344"); await page.getByRole("button", { name: "Recevoir le code" }).click(); await page.getByRole("button", { name: "Valider" }).click();
   await expect(page.getByText("Ménage & repassage")).toBeVisible();
+  await page.waitForTimeout(1500);                                       // let the staggered fade-in finish: axe would otherwise measure half-transparent text
   const home = await scan(page, "app-home");
   expect([...login, ...home].map((v) => v.id)).toEqual([]);
 });
