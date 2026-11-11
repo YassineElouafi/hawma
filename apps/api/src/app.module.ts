@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { LedgerService, MemoryLedgerRepo } from "./modules/ledger/ledger.service";
+import { PgLedgerRepo } from "./modules/ledger/pg-ledger.repo";
 import { DispatchController } from "./modules/dispatch/dispatch.controller";
 import { DispatchService, MemoryOfferRepo } from "./modules/dispatch/dispatch.service";
 import { PgOfferRepo, PgProviderPort } from "./modules/dispatch/pg-dispatch.repo";
@@ -52,6 +54,7 @@ function memoryProviderPort(): ProviderPort {
 }
 
 export const OVERRIDES = {
+  ledgerRepo: new MemoryLedgerRepo(),
   bus: new MemoryBus(), presence: new MemoryPresence(), offerRepo: new MemoryOfferRepo(),
   providerPort: memoryProviderPort(),
   bookingRepoRef: undefined as import("./modules/bookings/bookings.service").BookingRepo | undefined,
@@ -63,10 +66,12 @@ OVERRIDES.kycRepo = db ? new PgKycRepo(db) : new MemoryKycRepo(OVERRIDES.auditRe
 @Module({
   controllers: [HealthController, AuthController, BookingsController, CatalogueController, OpsController, VerificationController, ReviewsController, DocumentsController, DispatchController],
   providers: [
+    { provide: "LEDGER_REPO", useFactory: () => (db ? new PgLedgerRepo(db) : OVERRIDES.ledgerRepo) },
+    LedgerService,
     { provide: "BUS", useFactory: () => (process.env.REDIS_URL ? new RedisBus(new Redis(process.env.REDIS_URL), new Redis(process.env.REDIS_URL)) : OVERRIDES.bus) },
     { provide: "PRESENCE", useFactory: () => (process.env.REDIS_URL && !process.env.VITEST ? new RedisPresence(new Redis(process.env.REDIS_URL)) : OVERRIDES.presence) },
     { provide: "OFFER_REPO", useFactory: () => (db ? new PgOfferRepo(db) : OVERRIDES.offerRepo) },
-    { provide: "PROVIDER_PORT", useFactory: () => (db ? new PgProviderPort(db) : OVERRIDES.providerPort) },
+    { provide: "PROVIDER_PORT", useFactory: (l: LedgerService) => (db ? new PgProviderPort(db, l) : OVERRIDES.providerPort), inject: [LedgerService] },
     { provide: "BOOKINGS", useFactory: (b: BookingsService) => b, inject: [BookingsService] },
     { provide: "CLOCK", useValue: () => Date.now() },
     DispatchService,

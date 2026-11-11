@@ -10,6 +10,7 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await page.route("**/api/ops/me", (r) => r.fulfill({ json: { id: "s1", email: "admin@hawma.ma", roles: ["admin"] } }));
   const days = Array.from({ length: 14 }, (_, i) => ({ date: new Date(Date.UTC(2026, 10, 1 + i)).toISOString().slice(0, 10), count: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i], gmvCentimes: [3, 5, 4, 8, 6, 9, 7, 11, 10, 14, 12, 15, 13, 18][i] * 14000 }));
   await page.route("**/api/ops/stats", (r) => r.fulfill({ json: { total: 126, byState: { Settled: 61, Accepted: 14, Requested: 9, Cancelled: 12, Completed: 22, Disputed: 3, InProgress: 5 }, gmvCentimes: 1_182_000, feesCentimes: 177_300, perDay: days, active: 19, pendingKyc: 1, fillRate: 0.78 } }));
+  await page.route("**/api/ops/finance", (r) => r.fulfill({ json: { platformRevenue: 177300, cashHeld: 900000, earnings: 1004700 } }));
   await page.route("**/api/ops/kyc", (r) => r.fulfill({ json: kyc }));
   const PNG1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   await page.route("**/api/ops/kyc/*/documents", (r) => r.fulfill({ json: [{ id: "d1", kind: "cin_front", mime: "image/png", size: 70 }, { id: "d2", kind: "selfie", mime: "image/png", size: 70 }] }));

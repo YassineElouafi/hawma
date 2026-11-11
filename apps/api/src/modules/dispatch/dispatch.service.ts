@@ -39,7 +39,7 @@ export class MemoryOfferRepo implements OfferRepo {
 }
 
 /** Facts about a provider needed to decide eligibility (read from the catalogue/identity read model). */
-export interface ProviderPort { profiles?(ids: string[]): Promise<Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>>; busySet?(ids: string[]): Promise<Set<string>>; profile(id: string): Promise<{ tier: number; status: string; rating: number; cancelRate: number; acceptance: number } | undefined>; busy(id: string): Promise<boolean>; requiredTier(categoryId: string | null | undefined): Promise<number> }
+export interface ProviderPort { profiles?(ids: string[]): Promise<Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>>; busySet?(ids: string[]): Promise<Set<string>>; cashOwed?(ids: string[]): Promise<Map<string, number>>; profile(id: string): Promise<{ tier: number; status: string; rating: number; cancelRate: number; acceptance: number } | undefined>; busy(id: string): Promise<boolean>; requiredTier(categoryId: string | null | undefined): Promise<number> }
 
 @Injectable()
 export class DispatchService {
@@ -72,10 +72,11 @@ export class DispatchService {
       const profs = this.providers.profiles ? await this.providers.profiles(ids) : new Map(await Promise.all(ids.map(async (id) => [id, await this.providers.profile(id)] as const)).then((xs) => xs.filter((x): x is [string, NonNullable<typeof x[1]>] => !!x[1])));
       const busy = this.providers.busySet ? await this.providers.busySet(ids) : new Set((await Promise.all(ids.map(async (id) => ((await this.providers.busy(id)) ? id : null)))).filter((x): x is string => !!x));
       const holding = this.offers.openProviderIds ? await this.offers.openProviderIds(ids) : new Set((await Promise.all(ids.map(async (id) => ((await this.offers.pendingFor(id)).length ? id : null)))).filter((x): x is string => !!x));
+      const owed = this.providers.cashOwed ? await this.providers.cashOwed(ids) : new Map<string, number>();
       const cands: Candidate[] = [];
       for (const n of near) {
         const p = profs.get(n.id); if (!p || p.status !== "active" || !ids.includes(n.id)) continue;
-        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: busy.has(n.id) || holding.has(n.id), blocked: false, cashOwed: 0 });
+        cands.push({ id: n.id, distanceM: n.distanceM, etaS: n.distanceM / 6, rating: p.rating || 4, acceptance: p.acceptance, idleMinutes: 30, cancelRate: p.cancelRate, tier: Math.min(3, p.tier) as 0 | 1 | 2 | 3, busy: busy.has(n.id) || holding.has(n.id), blocked: false, cashOwed: owed.get(n.id) ?? 0 });
         if (busy.has(n.id) || holding.has(n.id)) sawBusy = true;
       }
       for (const best of rank(cands, { requiredTier, radiusM: radius, cashOwedLimit: 30_000 })) {

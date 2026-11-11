@@ -126,3 +126,11 @@ describe("queued requests", () => {
     expect(pending[0].bookingId).toBe(b2.id);
   });
 });
+
+describe("cash-debt cap", () => {
+  it("providers who owe more than 300 MAD in fees are not offered new jobs until they settle", async () => {
+    const s = setup(); await s.provider("indebted", 100); await s.provider("clean", 400);
+    (s.svc as any).providers.cashOwed = async (ids: string[]) => new Map(ids.map((id) => [id, id === "indebted" ? 31_000 : 0]));
+    await s.request(); expect(await s.svc.pending("indebted")).toHaveLength(0); expect(await s.svc.pending("clean")).toHaveLength(1);
+  });
+});

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Inject, Param, Post, Put, Query
 import { z } from "zod";
 import { AuthService } from "../auth/auth.service";
 import { CatalogueService } from "./catalogue.service";
+import { LedgerService } from "../ledger/ledger.service";
 
 const offerSchema = z.object({
   categoryId: z.string().min(2), title: z.string().min(3).max(120), description: z.string().max(2000).optional(),
@@ -17,12 +18,14 @@ const rulesSchema = z.object({ rules: z.array(z.object({ weekday: z.number().int
 
 @Controller("v1")
 export class CatalogueController {
-  constructor(@Inject(CatalogueService) private svc: CatalogueService, @Inject(AuthService) private auth: AuthService) {}
+  constructor(@Inject(CatalogueService) private svc: CatalogueService, @Inject(AuthService) private auth: AuthService, @Inject(LedgerService) private ledger: LedgerService) {}
   private async uid(h?: string) { if (!h?.startsWith("Bearer ")) throw new UnauthorizedException(); return this.auth.verify(h.slice(7)); }
 
   @Post("offers") async publish(@Headers("authorization") h: string, @Body() b: unknown) { return this.svc.publish(await this.uid(h), offerSchema.parse(b)); }
   @Delete("offers/:id") @HttpCode(204) async remove(@Headers("authorization") h: string, @Param("id") id: string) { await this.svc.deactivate(await this.uid(h), id); }
   @Get("offers/mine") async mine(@Headers("authorization") h: string) { return this.svc.offersOf(await this.uid(h)); }
+  /** Provider earnings: net amount owed to them and the fee they still owe Hawma from cash jobs. */
+  @Get("me/wallet") async wallet(@Headers("authorization") h: string) { return this.ledger.providerMoney(await this.uid(h)); }
   @Get("me/provider") async provider(@Headers("authorization") h: string) { return this.svc.providerSummary(await this.uid(h)); }
   @Get("search") search(@Query() q: unknown) { return this.svc.search(searchSchema.parse(q), new Date().toISOString().slice(0, 10)); }
   @Get("offers/:id/slots") slots(@Param("id") id: string, @Query() q: unknown) { const v = slotsSchema.parse(q); return this.svc.slots(id, v.from, v.days, v.durationMin); }

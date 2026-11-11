@@ -107,10 +107,11 @@ function OfferCard({ o, onDone }: { o: PendingOffer; onDone: () => void }) {
 export function ProviderToday({ insetTop }: { insetTop: number }) {
   const { t } = useT(); const me = currentUserId();
   const [sum, setSum] = useState<Summary | null>(null); const [ver, setVer] = useState<Verification[] | null>(null); const [jobs, setJobs] = useState<Booking[] | null>(null);
+  const [wallet, setWallet] = useState<{ netEarningsCentimes: number; cashOwedCentimes: number } | null>(null);
   const [online, setOnline] = useState(true); const [busy, setBusy] = useState(false); const [acting, setActing] = useState<string | null>(null);
   const load = useCallback(async () => {
     setBusy(true);
-    try { const [s, v, b] = await Promise.all([api("/v1/me/provider"), api("/v1/verifications/mine"), api("/v1/bookings")]); setSum(s); setVer(v); setJobs(b.filter((x: Booking) => x.providerId === me)); } catch {} finally { setBusy(false); }
+    try { const [s, v, b] = await Promise.all([api("/v1/me/provider"), api("/v1/verifications/mine"), api("/v1/bookings")]); setSum(s); setVer(v); api("/v1/me/wallet").then(setWallet).catch(() => {}); setJobs(b.filter((x: Booking) => x.providerId === me)); } catch {} finally { setBusy(false); }
   }, [me]);
   useEffect(() => { load(); const i = setInterval(load, 15000); return () => clearInterval(i); }, [load]);
   const act = async (id: string, cmd: string) => { setActing(id); try { await post(`/v1/bookings/${id}/${cmd}`); await load(); } catch (e) { Alert.alert(e instanceof ApiError ? e.message : t("network")); } finally { setActing(null); } };
@@ -139,6 +140,14 @@ export function ProviderToday({ insetTop }: { insetTop: number }) {
               <View style={{ flex: 1 }}><Text style={{ fontWeight: "800", fontSize: 17, color: C.ink }}>{online ? t("online") : t("offline")}</Text><Text style={{ color: C.mute, marginTop: 3, fontSize: 12.5 }}>{t("onlineHint")}</Text></View>
               <Switch value={online} onValueChange={setOnline} trackColor={{ true: C.emerald2, false: C.border }} thumbColor="#fff" />
             </Card>
+            {wallet && <Card style={{ marginTop: 10 }}>
+              <Text style={{ fontWeight: "800", fontSize: 16, color: C.ink }}>💰 {t("earnings")}</Text>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                <View style={{ flex: 1, backgroundColor: C.greenSoft, borderRadius: R.md, padding: 12 }}><Text style={{ color: C.mute, fontSize: 11.5, fontWeight: "600" }}>{t("netEarnings")}</Text><Text style={{ fontWeight: "800", fontSize: 20, color: C.green, marginTop: 3 }}>{wallet.netEarningsCentimes / 100} <Text style={{ fontSize: 11 }}>{t("mad")}</Text></Text></View>
+                <View style={{ flex: 1, backgroundColor: wallet.cashOwedCentimes > 30000 ? C.terracottaSoft : C.hairline, borderRadius: R.md, padding: 12 }}><Text style={{ color: C.mute, fontSize: 11.5, fontWeight: "600" }}>{t("feeOwed")}</Text><Text style={{ fontWeight: "800", fontSize: 20, color: wallet.cashOwedCentimes > 30000 ? C.terracotta : C.ink, marginTop: 3 }}>{wallet.cashOwedCentimes / 100} <Text style={{ fontSize: 11 }}>{t("mad")}</Text></Text></View>
+              </View>
+              {wallet.cashOwedCentimes > 30000 && <Text style={{ color: C.terracotta, marginTop: 10, lineHeight: 19, fontWeight: "600" }}>{t("feeWarn")}</Text>}
+            </Card>}
             {offers.map((o) => <OfferCard key={o.id} o={o} onDone={() => { setOffers((x) => x.filter((y) => y.id !== o.id)); load(); }} />)}
             <SectionTitle title={t("activeJob")} />
             {active.length === 0 ? <Card><Text style={{ color: C.mute }}>—</Text></Card> : active.map((j) => (

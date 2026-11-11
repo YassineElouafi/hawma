@@ -6,6 +6,7 @@ import { ZodFilter } from "./zod.filter";
 import { attachGateway } from "./realtime/gateway";
 import { MemoryBus, RedisBus } from "./realtime/bus";
 import { AuthService } from "./modules/auth/auth.service";
+import { LedgerService } from "./modules/ledger/ledger.service";
 import { BusPublisher } from "./realtime/outbox-publisher";
 import { relayOutbox } from "./modules/bookings/outbox.relay";
 import { db } from "./app.module";
@@ -45,8 +46,15 @@ export function startRealtime(app: NestFastifyApplication) {
 export function startEventDelivery(app: NestFastifyApplication) {
   const bus = app.get("BUS") as import("./realtime/bus").Bus; const bookings = app.get(BookingsService);
   const parties = async (id: string) => { const b = await bookings.repo.get(id); return [b?.customerId, b?.providerId].filter((x): x is string => !!x); };
-  if (!db) { bookings.afterEvent = (b, e) => { const msg = { bookingId: b.id, ...e }; void bus.publish(`booking:${b.id}`, msg); for (const u of [b.customerId, b.providerId]) if (u) void bus.publish(`user:${u}`, msg); }; return () => {}; }
-  const pub = new BusPublisher(bus, parties); let busy = false;
+  if (!db) { bookings.afterEvent = (b, e) => {
+      if (e.type === "booking.confirmed") void app.get(LedgerService).settleBooking(b.id).catch(() => {}); const msg = { bookingId: b.id, ...e }; void bus.publish(`booking:${b.id}`, msg); for (const u of [b.customerId, b.providerId]) if (u) void bus.publish(`user:${u}`, msg); }; return () => {}; }
+  const ledger = app.get(LedgerService);
+  const bus_ = new BusPublisher(bus, parties);
+  const pub = { async publish(type: string, eventId: string, payload: unknown) {
+    await bus_.publish(type, eventId, payload);
+    if (type === "booking.confirmed") await ledger.settleBooking((payload as { bookingId: string }).bookingId); // idempotent; a failure rolls the relay batch back and retries
+  } };
+  let busy = false;
   const pgdb = db; const timer = setInterval(async () => { if (busy) return; busy = true; try { while ((await relayOutbox(pgdb, pub)) > 0); } catch (e) { console.warn("outbox relay failed", (e as Error).message); } finally { busy = false; } }, 1000);
   return () => clearInterval(timer);
 }

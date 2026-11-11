@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
-import { createApp } from "../src/main";
+import { createApp, startEventDelivery } from "../src/main";
 import { OVERRIDES } from "../src/app.module";
 
 let app: NestFastifyApplication;
-beforeAll(async () => { app = await createApp(); await app.init(); await app.getHttpAdapter().getInstance().ready(); });
+beforeAll(async () => { app = await createApp(); await app.init(); await app.getHttpAdapter().getInstance().ready(); startEventDelivery(app); });
 afterAll(async () => { await app.close(); });
 
 const post = (url: string, payload?: unknown, token?: string) =>
@@ -201,5 +201,19 @@ describe("booking provider summary", () => {
     const r = await app.inject({ url: `/v1/bookings/${b.id}/provider`, headers: h(c.accessToken) });
     expect(r.json()).toMatchObject({ id: p.userId, rating: 4.6, jobs: 12, tier: 1 }); expect(JSON.stringify(r.json())).not.toContain("+212");
     expect((await app.inject({ url: `/v1/bookings/${b.id}/provider`, headers: h(x.accessToken) })).statusCode).toBe(403);
+  });
+});
+
+describe("money: wallet and finance after a confirmed cash job", () => {
+  it("provider wallet and ops finance totals reflect the ledger", async () => {
+    const c = await login("0671212121"), p = await login("0672323232");
+    const b = (await post("/v1/bookings", { mode: "catalogue", providerId: p.userId, totalCentimes: 20000, paymentMethod: "cash" }, c.accessToken)).json();
+    for (const cmd of ["accept", "start-trip", "arrive", "start-job", "complete"]) await post(`/v1/bookings/${b.id}/${cmd}`, undefined, p.accessToken);
+    await post(`/v1/bookings/${b.id}/confirm`, undefined, c.accessToken);
+    await new Promise((r) => setTimeout(r, 100));                        // memory-mode event hook is fire-and-forget
+    const w = (await app.inject({ url: "/v1/me/wallet", headers: { authorization: `Bearer ${p.accessToken}` } })).json();
+    expect(w).toMatchObject({ netEarningsCentimes: 17000, cashOwedCentimes: 3000 });
+    expect((await app.inject({ url: "/v1/me/wallet", headers: { authorization: `Bearer ${c.accessToken}` } })).json()).toMatchObject({ netEarningsCentimes: 0, cashOwedCentimes: 0 });
+    expect((await app.inject({ url: "/v1/me/wallet" })).statusCode).toBe(401);
   });
 });

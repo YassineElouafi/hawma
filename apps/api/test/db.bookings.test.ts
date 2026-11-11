@@ -69,3 +69,21 @@ d("Postgres booking repo + outbox (real Postgres)", () => {
     await client.end();
   });
 });
+
+(url ? describe : describe.skip)("ledger settlement on real Postgres", () => {
+  it("confirmed cash job posts a balanced transaction exactly once, even under concurrent/replayed delivery", async () => {
+    const { LedgerService } = await import("../src/modules/ledger/ledger.service"); const { PgLedgerRepo } = await import("../src/modules/ledger/pg-ledger.repo");
+    const client = postgres(url!, { max: 8 }); const db2 = drizzle(client); const repo = new PgBookingRepo(db2); const svc = new BookingsService(repo); const ledger = new LedgerService(new PgLedgerRepo(db2), repo);
+    const cust = randomUUID(), prov = randomUUID();
+    const b = await svc.create(cust, { mode: "catalogue", providerId: prov, totalCentimes: 20000, paymentMethod: "cash" });
+    for (const c of ["accept", "start_trip", "arrive", "start_job", "complete"] as const) await svc.command(b.id, c, prov);
+    await svc.command(b.id, "confirm", cust);
+    const results = await Promise.all(Array.from({ length: 6 }, () => ledger.settleBooking(b.id)));
+    expect(results.filter((r) => r === "posted")).toHaveLength(1); expect(results.filter((r) => r === "duplicate")).toHaveLength(5);
+    const rows = await client`select account, amount_centimes from money.ledger_entry where owner_id = ${prov} or (account = 'platform_revenue' and txn_id = (select txn_id from money.ledger_entry where owner_id = ${prov} limit 1))`;
+    expect(rows.reduce((s, r) => s + r.amount_centimes, 0)).toBe(0);
+    expect(await ledger.providerMoney(prov)).toMatchObject({ netEarningsCentimes: 17000, cashOwedCentimes: 3000 });
+    expect((await ledger.cashOwedFor([prov, randomUUID()])).get(prov)).toBe(3000);
+    await client.end();
+  });
+});

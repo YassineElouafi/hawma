@@ -23,7 +23,8 @@ export class PgOfferRepo implements OfferRepo {
 }
 
 export class PgProviderPort implements ProviderPort {
-  constructor(private db: PostgresJsDatabase) {}
+  constructor(private db: PostgresJsDatabase, private ledger?: { cashOwedFor(ids: string[]): Promise<Map<string, number>> }) {}
+  async cashOwed(ids: string[]) { return this.ledger ? this.ledger.cashOwedFor(ids) : new Map<string, number>(); }
   async profile(id: string) { const [r] = await this.db.select().from(s.providers).where(eq(s.providers.userId, id)); return r && { tier: r.kycTier, status: r.status, rating: r.ratingAvg, cancelRate: r.cancelRate, acceptance: r.acceptance }; }
   async profiles(ids: string[]) { const m = new Map<string, { tier: number; status: string; rating: number; cancelRate: number; acceptance: number }>(); if (!ids.length) return m; for (const r of await this.db.select().from(s.providers).where(inArray(s.providers.userId, ids))) m.set(r.userId, { tier: r.kycTier, status: r.status, rating: r.ratingAvg, cancelRate: r.cancelRate, acceptance: r.acceptance }); return m; }
   async busySet(ids: string[]) { if (!ids.length) return new Set<string>(); return new Set((await this.db.selectDistinct({ p: s.bookings.providerId }).from(s.bookings).where(and(inArray(s.bookings.providerId, ids), inArray(s.bookings.state, ["Accepted", "EnRoute", "Arrived", "InProgress"])))).map((r) => r.p as string)); }
