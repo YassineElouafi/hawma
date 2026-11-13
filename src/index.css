@@ -99,7 +99,7 @@ body { @apply bg-background text-foreground font-sans antialiased; }
   --color-ops-green: var(--ops-green); --color-ops-red: var(--ops-red); --color-ops-amber: var(--ops-amber); --color-ops-blue: var(--ops-blue); --color-ops-violet: var(--ops-violet);
 }
 .ops-root { background: var(--ops-bg); color: var(--ops-fg); font-size: 13.5px; font-family: "Plus Jakarta Sans Variable", "Cairo Variable", var(--font-sans); letter-spacing: 0; }
-.ops-root button, .ops-root [role=button] { border-radius: 9999px; }
+.ops-root button[class*="bg-ops-accent"], .ops-root button[class*="bg-ops-red"] { border-radius: 9999px; }
 .ops-root [class*="bg-ops-card"] { border-radius: 1.25rem; }
 .ops-root ::selection { background: var(--ops-ring); }
 .ops-scroll { scrollbar-width: thin; scrollbar-color: var(--ops-border) transparent; }
