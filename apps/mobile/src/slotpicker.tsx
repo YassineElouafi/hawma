@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text } from "./text";
 import { api } from "./api";
 import { C, R } from "./theme";
 import { Card, CardSkeleton } from "./ui";

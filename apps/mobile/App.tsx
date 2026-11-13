@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Animated, Easing, FlatList, I18nManager, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Dimensions, Animated, Easing, FlatList, I18nManager, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Text } from "./src/text";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
@@ -7,10 +8,14 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { api, ApiError, loadTokens, post, saveTokens, setOnLogout, accessToken } from "./src/api";
 import { DEFAULT_CENTER, WS_URL } from "./src/config";
 import { DICT, LANGS, type Key, type Lang } from "./src/i18n";
-import { C, R, shadow } from "./src/theme";
+import { C, R, shadow, shadowSm } from "./src/theme";
 import { distanceM, etaMin } from "./src/geo";
 import { SlotPicker, type Slot } from "./src/slotpicker";
-import { Avatar, Badge, Button, Card, CardSkeleton, Divider, Empty, FadeIn, Field, Row, SectionTitle, Segmented, Sheet, Stepper, stateTone } from "./src/ui";
+import { useFonts } from "expo-font";
+import { PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans";
+import { Cairo_400Regular, Cairo_500Medium, Cairo_600SemiBold, Cairo_700Bold, Cairo_800ExtraBold } from "@expo-google-fonts/cairo";
+import { setArabicFont } from "./src/text";
+import { ArrowDot, Chip, FloatingTabs, RatingPill, SceneArt, UnderLink, Avatar, Badge, Button, Card, CardSkeleton, Divider, Empty, FadeIn, Field, Row, SectionTitle, Segmented, Sheet, Stepper, stateTone } from "./src/ui";
 
 I18nManager.allowRTL(false); // direction is handled per-view so switching language needs no restart
 
@@ -23,16 +28,17 @@ interface Live { lat: number; lng: number; at: number }
 const ACTIVE = ["Requested", "Offered", "Accepted", "EnRoute", "Arrived", "InProgress"];
 
 export default function App() {
-  const [lang, setLangState] = useState<Lang>("fr"); const [ready, setReady] = useState(false); const [authed, setAuthed] = useState(false);
+  const [lang, setLangState] = useState<Lang>("fr"); const [ready, setReady] = useState(false); const [fontsOk] = useFonts({ PlusJakartaSans_400Regular, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold, Cairo_400Regular, Cairo_500Medium, Cairo_600SemiBold, Cairo_700Bold, Cairo_800ExtraBold }); const [authed, setAuthed] = useState(false);
   useEffect(() => { (async () => { const l = (await SecureStore.getItemAsync("lang")) as Lang | null; if (l) setLangState(l); setOnLogout(() => setAuthed(false)); setAuthed(!!(await loadTokens())); setReady(true); })(); }, []);
   const setLang = (l: Lang) => { setLangState(l); SecureStore.setItemAsync("lang", l); };
   const value = useMemo(() => ({ lang, setLang, rtl: lang !== "fr", t: (k: Key) => DICT[lang][k] ?? DICT.fr[k] }), [lang]);
+  setArabicFont(lang !== "fr");
   return (
     <SafeAreaProvider>
       <LangCtx.Provider value={value}>
-        <View style={{ flex: 1, backgroundColor: authed ? C.bg : C.emerald, direction: value.rtl ? "rtl" : "ltr" }}>
+        <View style={{ flex: 1, backgroundColor: authed ? C.bg : C.ink, direction: value.rtl ? "rtl" : "ltr" }}>
           <StatusBar style={authed ? "dark" : "light"} />
-          {!ready ? null : authed ? <Main onLogout={async () => { await saveTokens(null); setAuthed(false); }} /> : <Login onDone={() => setAuthed(true)} />}
+          {!ready || !fontsOk ? null : authed ? <Main onLogout={async () => { await saveTokens(null); setAuthed(false); }} /> : <Login onDone={() => setAuthed(true)} />}
         </View>
       </LangCtx.Provider>
     </SafeAreaProvider>
@@ -42,7 +48,7 @@ export default function App() {
 /* ---------- login ---------- */
 function LangPills({ onDark }: { onDark?: boolean }) {
   const { lang, setLang } = useT();
-  return <View style={{ flexDirection: "row", gap: 6 }}>{LANGS.map((l) => <Pressable key={l.id} onPress={() => setLang(l.id)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.pill, backgroundColor: lang === l.id ? C.saffron : onDark ? "#ffffff22" : C.hairline }}><Text style={{ fontWeight: "700", fontSize: 13, color: lang === l.id ? C.emerald : onDark ? "#fff" : C.mute }}>{l.label}</Text></Pressable>)}</View>;
+  return <View style={{ flexDirection: "row", gap: 6 }}>{LANGS.map((l) => <Pressable key={l.id} onPress={() => setLang(l.id)} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: R.pill, backgroundColor: lang === l.id ? (onDark ? "#fff" : C.ink) : onDark ? "#ffffff30" : "#0000000d" }}><Text style={{ fontWeight: "700", fontSize: 13, color: lang === l.id ? (onDark ? C.ink : "#fff") : onDark ? "#fff" : C.mute }}>{l.label}</Text></Pressable>)}</View>;
 }
 
 function Login({ onDone }: { onDone: () => void }) {
@@ -61,15 +67,16 @@ function Login({ onDone }: { onDone: () => void }) {
   };
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <SceneArt cat="lending" radius={0} emojiSize={210} style={StyleSheet.absoluteFill} />
       <View style={{ paddingTop: ins.top + 20, paddingHorizontal: 24, paddingBottom: 36, flex: 0.9, justifyContent: "space-between" }}>
         <LangPills onDark />
         <View>
-          <View style={{ width: 68, height: 68, borderRadius: 22, backgroundColor: C.saffron, alignItems: "center", justifyContent: "center", ...shadow }}><Text style={{ fontSize: 40, fontWeight: "800", color: C.emerald }}>ح</Text></View>
+          <View style={{ width: 68, height: 68, borderRadius: 22, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", ...shadow }}><Text style={{ fontSize: 40, fontWeight: "800", color: C.ink }}>ح</Text></View>
           <Text style={{ color: "#fff", fontSize: 44, fontWeight: "800", marginTop: 20, letterSpacing: -1 }}>Hawma</Text>
-          <Text style={{ color: C.saffron, fontSize: 19, marginTop: 4, fontWeight: "600" }}>{t("tag")}</Text>
+          <Text style={{ color: "#ffffffe6", fontSize: 19, marginTop: 4, fontWeight: "600" }}>{t("tag")}</Text>
         </View>
       </View>
-      <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 12, paddingBottom: Math.max(ins.bottom, 20) + 10 }}>
+      <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingHorizontal: 24, paddingTop: 12, paddingBottom: Math.max(ins.bottom, 20) + 10 }}>
         <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: C.border, alignSelf: "center", marginBottom: 8 }} />
         <Field label={t("phone")} value={phone} onChangeText={setPhone} placeholder={t("phoneHint")} keyboardType="phone-pad" editable={step === "phone"} />
         {step === "code" && <>
@@ -95,7 +102,7 @@ function Main({ onLogout }: { onLogout: () => void }) {
   const tabs: [Tab, string, string][] = mode === "provider" ? [["today", "📅", t("today")], ["schedule", "🕘", t("schedule")], ["offers", "🛠️", t("offers")], ["profile", "👤", t("profile")]] : [["home", "🏠", t("home")], ["bookings", "🧾", t("bookings")], ["profile", "👤", t("profile")]];
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingBottom: ins.bottom + 84 }}>
         {tab === "today" && <ProviderToday insetTop={ins.top} />}
         {tab === "offers" && <ProviderOffers insetTop={ins.top} />}
         {tab === "schedule" && <ProviderSchedule insetTop={ins.top} />}
@@ -103,21 +110,14 @@ function Main({ onLogout }: { onLogout: () => void }) {
         {tab === "bookings" && <Bookings insetTop={ins.top} />}
         {tab === "profile" && <Profile insetTop={ins.top} mode={mode} onSwitch={switchMode} onLogout={onLogout} located={located} useMyLocation={useMyLocation} />}
       </View>
-      <View style={[{ flexDirection: "row", backgroundColor: C.card, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border, paddingTop: 8, paddingBottom: Math.max(ins.bottom, 10) }]}>
-        {tabs.map(([k, i, l]) => (
-          <Pressable key={k} style={{ flex: 1, alignItems: "center", gap: 3 }} onPress={() => setTab(k)}>
-            <View style={{ paddingHorizontal: 18, paddingVertical: 4, borderRadius: R.pill, backgroundColor: tab === k ? C.emeraldSoft : "transparent" }}><Text style={{ fontSize: 20, opacity: tab === k ? 1 : 0.55 }}>{i}</Text></View>
-            <Text style={{ fontSize: 11, fontWeight: tab === k ? "800" : "600", color: tab === k ? C.emerald : C.faint }}>{l}</Text>
-          </Pressable>
-        ))}
-      </View>
+      <FloatingTabs items={tabs} value={tab} onChange={setTab} bottom={ins.bottom} />
     </View>
   );
 }
 
 const LargeTitle = ({ top, title, sub, right }: { top: number; title: string; sub?: string; right?: React.ReactNode }) => (
   <View style={{ paddingTop: top + 14, paddingHorizontal: 20, paddingBottom: 6, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
-    <View style={{ flex: 1 }}>{sub ? <Text style={{ color: C.mute, fontWeight: "600", fontSize: 14 }}>{sub}</Text> : null}<Text style={{ fontSize: 32, fontWeight: "800", color: C.ink, letterSpacing: -0.8 }}>{title}</Text></View>{right}
+    <View style={{ flex: 1 }}>{sub ? <Text style={{ color: C.mute, fontWeight: "600", fontSize: 14 }}>{sub}</Text> : null}<Text style={{ fontSize: 31, fontWeight: "800", color: C.ink, letterSpacing: -0.4 }}>{title}</Text></View>{right}
   </View>
 );
 
@@ -148,6 +148,7 @@ function UrgentBanner({ where }: { where: { lat: number; lng: number } }) {
 function Home({ where, located, insetTop }: { where: { lat: number; lng: number }; located: boolean; insetTop: number }) {
   const { t } = useT();
   const [q, setQ] = useState(""); const [cat, setCat] = useState<string>("all"); const [hits, setHits] = useState<Hit[] | null>(null); const [busy, setBusy] = useState(false); const [sel, setSel] = useState<Hit | null>(null);
+  const top = useMemo(() => [...(hits ?? [])].sort((a, b) => b.rating - a.rating).slice(0, 5), [hits]); const SLIDE = Math.round(Dimensions.get("window").width * 0.74);
   const load = useCallback(async () => {
     setBusy(true);
     try { const p = new URLSearchParams({ lat: String(where.lat), lng: String(where.lng), radiusM: "10000", limit: "30" }); if (cat !== "all") p.set("categoryId", cat); if (q.trim()) p.set("q", q.trim()); setHits(await api(`/v1/search?${p}`, { auth: false })); }
@@ -160,21 +161,31 @@ function Home({ where, located, insetTop }: { where: { lat: number; lng: number 
         refreshControl={<RefreshControl refreshing={busy && !!hits} onRefresh={load} tintColor={C.emerald} />}
         ListHeaderComponent={<>
           <LargeTitle top={insetTop} sub={t("hello")} title={t("findHelp")} right={<View style={{ backgroundColor: C.emeraldSoft, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 6 }}><Text style={{ color: C.emerald, fontWeight: "700", fontSize: 12.5 }}>📍 {located ? "GPS" : "Maarif"}</Text></View>} />
-          <View style={{ marginHorizontal: 4, marginTop: 10, flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: R.pill, borderWidth: 1, borderColor: C.border, paddingHorizontal: 16 }}>
-            <Text style={{ fontSize: 16 }}>🔍</Text><TextInput style={{ flex: 1, paddingVertical: 13, paddingHorizontal: 10, fontSize: 15.5, color: C.ink }} value={q} onChangeText={setQ} placeholder={t("search")} placeholderTextColor={C.faint} />
-            {!!q && <Pressable onPress={() => setQ("")}><Text style={{ color: C.faint, fontSize: 16 }}>✕</Text></Pressable>}
+          <View style={{ marginTop: 14, flexDirection: "row", alignItems: "center", backgroundColor: C.card, borderRadius: R.pill, paddingLeft: 20, paddingRight: 8, ...shadowSm }}>
+            <Text style={{ fontSize: 16 }}>🔍</Text><TextInput style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 10, fontSize: 15.5, color: C.ink, fontFamily: "PlusJakartaSans_500Medium" }} value={q} onChangeText={setQ} placeholder={t("search")} placeholderTextColor={C.faint} />
+            {!!q ? <Pressable onPress={() => setQ("")} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.ink, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 15 }}>✕</Text></Pressable> : <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.ink, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 17 }}>⚙︎</Text></View>}
           </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 18, marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+            {[["all", ""], ...CATS].map(([id, e]) => <Chip key={id} on={cat === id} onPress={() => setCat(id)} icon={e || undefined} label={id === "all" ? t("all") : t(`c_${id}` as Key)} />)}
+          </ScrollView>
           <UrgentBanner where={where} />
-          <SectionTitle title={t("categories")} />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 }}>
-            {[["all", "✦"], ...CATS].map(([id, e]) => {
-              const on = cat === id;
-              return <Pressable key={id} onPress={() => setCat(id)} style={{ width: "25%", padding: 4 }}>
-                <View style={{ alignItems: "center", paddingVertical: 12, borderRadius: R.lg, backgroundColor: on ? C.emerald : C.card, borderWidth: 1, borderColor: on ? C.emerald : C.hairline }}>
-                  <Text style={{ fontSize: 24 }}>{e}</Text><Text numberOfLines={1} style={{ marginTop: 6, fontSize: 11.5, fontWeight: "700", color: on ? "#fff" : C.ink }}>{id === "all" ? t("all") : t(`c_${id}` as Key)}</Text>
-                </View></Pressable>;
-            })}
-          </View>
+          {!!hits && top.length > 0 && <>
+            <SectionTitle title={t("topRated")} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={SLIDE + 14} decelerationRate="fast" style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 14 }}>
+              {top.map((h) => (
+                <Pressable key={h.id} onPress={() => setSel(h)} accessibilityLabel={h.title} style={({ pressed }) => ({ width: SLIDE, transform: [{ scale: pressed ? 0.985 : 1 }] })}>
+                  <SceneArt cat={h.categoryId} height={SLIDE * 1.22} radius={32} emojiSize={120} style={shadowSm}>
+                    <View style={{ position: "absolute", left: 18, right: 18, bottom: 18 }}>
+                      <Text style={{ color: "#ffffffcc", fontWeight: "600", fontSize: 12.5 }}>{(h.distanceM / 1000).toFixed(1)} {t("km")} · {h.priceCentimes / 100} {t("mad")}</Text>
+                      <Text numberOfLines={2} style={{ color: "#fff", fontWeight: "800", fontSize: 24, marginTop: 3, lineHeight: 28 }}>{h.title}</Text>
+                      <View style={{ marginTop: 10 }}><RatingPill value={h.rating} count={h.jobs} dark /></View>
+                      <View style={{ marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#0000008c", borderRadius: R.pill, padding: 5, paddingLeft: 20 }}><Text style={{ color: "#fff", fontWeight: "700", fontSize: 14.5 }}>{t("seeMore")}</Text><ArrowDot dark /></View>
+                    </View>
+                  </SceneArt>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </>}
           <SectionTitle title={t("near")} right={hits ? `${hits.length}` : undefined} />
         </>}
         ListEmptyComponent={hits ? <Empty emoji="🔎" title={t("empty")} /> : <View>{[0, 1, 2, 3].map((i) => <CardSkeleton key={i} />)}</View>}
@@ -187,17 +198,16 @@ function Home({ where, located, insetTop }: { where: { lat: number; lng: number 
 function HitCard({ h, onPress }: { h: Hit; onPress: () => void }) {
   const { t } = useT();
   return (
-    <Card onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 }}>
-      <Avatar id={h.providerId} emoji={emojiOf(h.categoryId)} size={54} />
-      <View style={{ flex: 1 }}>
-        <Text numberOfLines={1} style={{ fontWeight: "800", fontSize: 16, color: C.ink }}>{h.title}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 5 }}>
-          <Text style={{ color: C.ink, fontWeight: "700", fontSize: 12.5 }}>⭐ {h.rating.toFixed(1)}<Text style={{ color: C.mute, fontWeight: "500" }}> ({h.jobs})</Text></Text>
-          <Text style={{ color: C.mute, fontSize: 12.5 }}>· {(h.distanceM / 1000).toFixed(1)} {t("km")}</Text>
+    <Card onPress={onPress} style={{ padding: 10, marginBottom: 14, borderRadius: 32 }}>
+      <SceneArt cat={h.categoryId} height={150} radius={24} emojiSize={78} />
+      <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 10, paddingTop: 14, paddingBottom: 8 }}>
+        <View style={{ flex: 1, paddingRight: 10 }}>
+          <Text numberOfLines={1} style={{ fontWeight: "800", fontSize: 18, color: C.ink }}>{h.title}</Text>
+          <Text style={{ color: C.mute, fontSize: 13, fontWeight: "500", marginTop: 3 }}>{(h.distanceM / 1000).toFixed(1)} {t("km")} • {h.priceCentimes ? `${h.priceCentimes / 100} ${t("mad")}` : t("free")}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}><RatingPill value={h.rating} count={h.jobs} />{h.tier >= 1 && <Badge label={`✔ ${t("verified")}`} t="accent" />}{h.availableThisWeek && <Badge label={t("available")} t="green" />}</View>
         </View>
-        <View style={{ flexDirection: "row", gap: 6, marginTop: 7 }}>{h.tier >= 1 && <Badge label={`✔ ${t("verified")}`} t="accent" />}{h.availableThisWeek && <Badge label={t("available")} t="green" dot />}</View>
+        <ArrowDot size={48} />
       </View>
-      <View style={{ alignItems: "flex-end" }}><Text style={{ fontWeight: "800", fontSize: 18, color: C.emerald }}>{h.priceCentimes ? h.priceCentimes / 100 : "🤝"}</Text>{h.priceCentimes ? <Text style={{ color: C.mute, fontSize: 11 }}>{t("mad")}</Text> : <Text style={{ color: C.mute, fontSize: 11 }}>{t("free")}</Text>}</View>
     </Card>
   );
 }
@@ -214,9 +224,10 @@ function Detail({ hit, onClose }: { hit: Hit | null; onClose: () => void }) {
   return (
     <Sheet visible={!!hit} onClose={onClose}>
       {hit && <>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <Avatar id={hit.providerId} emoji={emojiOf(hit.categoryId)} size={64} />
-          <View style={{ flex: 1 }}><Text style={{ fontSize: 22, fontWeight: "800", color: C.ink, letterSpacing: -0.4 }}>{hit.title}</Text><View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>{hit.tier >= 1 && <Badge label={`✔ ${t("verified")}`} t="accent" />}{hit.availableThisWeek && <Badge label={t("available")} t="green" dot />}</View></View>
+        <SceneArt cat={hit.categoryId} height={170} radius={28} emojiSize={100} />
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginTop: 16, gap: 10 }}>
+          <View style={{ flex: 1 }}><Text style={{ fontSize: 24, fontWeight: "800", color: C.ink, lineHeight: 28 }}>{hit.title}</Text><View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>{hit.tier >= 1 && <Badge label={`✔ ${t("verified")}`} t="accent" />}{hit.availableThisWeek && <Badge label={t("available")} t="green" dot />}</View></View>
+          <RatingPill value={hit.rating} />
         </View>
         <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
           {[[t("rating"), `⭐ ${hit.rating.toFixed(1)}`], [t("jobs"), String(hit.jobs)], [t("distance"), `${(hit.distanceM / 1000).toFixed(1)} ${t("km")}`]].map(([l, v]) => (

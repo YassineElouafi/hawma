@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, ScrollView, Switch, View } from "react-native";
+import { Text } from "./text";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { api, ApiError, accessToken, currentUserId, post } from "./api";
