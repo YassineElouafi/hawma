@@ -40,7 +40,7 @@ export const Tag = ({ tone = "neutral", className, children }: { tone?: "neutral
 
 export const RatingPill = ({ value, count, onDark, className }: { value: number; count?: number; onDark?: boolean; className?: string }) => (
   <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold", onDark ? "bg-white/15 text-white backdrop-blur" : "bg-black/5 text-g-ink", className)}>
-    <Star size={14} strokeWidth={2.2} className={onDark ? "text-white" : "text-g-ink"} />{value.toFixed(1)}{count != null && <span className={cn("font-medium", onDark ? "text-white/75" : "text-g-mute")}>({count})</span>}
+    <Star size={14} strokeWidth={2.2} fill="currentColor" className="text-g-saffron" />{value.toFixed(1)}{count != null && <span className={cn("font-medium", onDark ? "text-white/75" : "text-g-mute")}>({count})</span>}
   </span>
 );
 

@@ -116,11 +116,11 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .glide {
   --g-bg: #f3f4f5; --g-card: #ffffff; --g-ink: #111214; --g-mute: #5d6268; --g-faint: #a3a8ad; --g-line: #e6e8ea;
   --g-accent: #0b5d4b; --g-accent-soft: #e3f1ed; --g-saffron: #f2b84b; --g-danger: #b8401a; --g-danger-soft: #fbe9e2; --g-green: #0f6b45; --g-green-soft: #e1f4ea;
-  font-family: "Plus Jakarta Sans Variable", "Cairo Variable", system-ui, sans-serif; background: var(--g-bg); color: var(--g-ink); letter-spacing: -0.011em;
+  font-family: "Plus Jakarta Sans Variable", "Cairo Variable", system-ui, sans-serif; background: var(--g-bg); color: var(--g-ink); letter-spacing: 0; word-spacing: 0.08em;
   font-feature-settings: "ss01", "cv11";
 }
 .glide[dir="rtl"], [dir="rtl"] .glide { font-family: "Cairo Variable", "Plus Jakarta Sans Variable", system-ui, sans-serif; letter-spacing: 0; }
-.glide h1, .glide h2, .glide h3 { letter-spacing: -0.03em; font-weight: 750; }
+.glide h1, .glide h2, .glide h3 { letter-spacing: -0.015em; word-spacing: 0.1em; font-weight: 750; }
 .glide [dir="rtl"] h1, [dir="rtl"].glide h1, [dir="rtl"].glide h2, [dir="rtl"].glide h3 { letter-spacing: 0; }
 @theme inline {
   --color-g-bg: var(--g-bg); --color-g-card: var(--g-card); --color-g-ink: var(--g-ink); --color-g-mute: var(--g-mute); --color-g-faint: var(--g-faint); --color-g-line: var(--g-line);
@@ -133,3 +133,4 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .glide-grain::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .10; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .glide .no-scrollbar { scrollbar-width: none; } .glide .no-scrollbar::-webkit-scrollbar { display: none; }
 @keyframes g-float { 0%,100% { transform: translateY(0) rotate(var(--r, -8deg)); } 50% { transform: translateY(-8px) rotate(var(--r, -8deg)); } }
+.glide .tracking-tight { letter-spacing: -0.01em; word-spacing: 0.1em; }
