@@ -61,7 +61,7 @@ test("ops console flow against a mocked API", async ({ page }, info) => {
   await expect(approve).toBeEnabled();
   await page.screenshot({ path: "screenshots/ops-3-review.png" });
   await approve.click();
-  expect(decisions).toEqual(["documents match the applicant"]);
+  await expect.poll(() => decisions).toEqual(["documents match the applicant"]);
 
   await page.getByRole("button", { name: "Bookings" }).first().click();
   await expect(page.getByRole("heading", { name: "Bookings" })).toBeVisible();
