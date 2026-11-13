@@ -13,10 +13,10 @@ Do not stop until every phase is done. Keep prod green: deploy only after CI is 
 ## Phases (tick when shipped to prod and verified)
 - [x] 1. Design system: tokens, fonts (web + mobile), shared components (web: `src/components/glide/*`, mobile: `apps/mobile/src/glide.tsx`)
 - [x] 2. Web app `/app` redesigned (login, home hero carousel + chips, provider sheet, bookings, profile, booking detail, urgent request)
-- [ ] 3. Mobile app redesigned (same screens + provider mode) → publish new APK, post link
-- [ ] 4. Landing page redesigned (hero, sections, footer) in FR/AR/Darija, a11y clean
-- [ ] 5. Ops console restyled (fonts, radii, black primary, floating-pill mobile nav), keep density
-- [ ] 6. Final pass: a11y workflow green, screenshots reviewed on desktop+mobile, docs updated, post summary with screenshots description
+- [x] 3. Mobile app redesigned (same screens + provider mode) → publish new APK, post link
+- [x] 4. Landing page redesigned (hero, sections, footer) in FR/AR/Darija, a11y clean
+- [x] 5. Ops console restyled (fonts, radii, black primary, floating-pill mobile nav), keep density
+- [x] 6. Final pass: a11y workflow green, screenshots reviewed on desktop+mobile, docs updated, post summary with screenshots description
 
 ## Rules
 - Post a threaded update to Yassine after each phase (what changed, what was verified, what wasn't).
