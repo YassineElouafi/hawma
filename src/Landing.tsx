@@ -13,7 +13,7 @@ const pill = "inline-flex h-14 items-center justify-center gap-2 rounded-full px
 function PhoneMock() {
   return (
     <div className="relative h-[620px] w-[300px] rounded-[3rem] bg-g-ink p-3 shadow-[0_40px_90px_-30px_rgba(17,18,20,.55)]">
-      <div className="h-full w-full overflow-hidden rounded-[2.4rem] bg-g-bg px-4 pt-9" aria-hidden>
+      <div dir="ltr" className="relative h-full w-full overflow-hidden rounded-[2.4rem] bg-g-bg px-4 pt-9 text-g-ink" aria-hidden>
         <div className="text-[12px] font-semibold text-g-mute">Bonjour 👋</div>
         <div className="text-[22px] font-extrabold leading-tight">De quoi as-tu besoin ?</div>
         <div className="mt-3 flex items-center gap-2 rounded-full bg-white p-1.5 ps-4 text-[12px] text-g-mute shadow-g-card"><Search size={14} />Rechercher un service…<span className="ms-auto grid h-8 w-8 place-items-center rounded-full bg-g-ink text-white">⚙</span></div>
