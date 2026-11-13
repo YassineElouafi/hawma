@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { BadgeCheck, CalendarDays, ChevronRight, Home, LogOut, MapPin, Receipt, Star, User, X, Zap, ArrowLeft, ShieldCheck, Clock } from "lucide-react";
 import { useI18n, LANGS } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { ArrowBtn, Avatar, Card, Chip, CTA, FloatingTabs, GSheet, IconBtn, RatingPill, SceneArt, SearchBar, Section, Skeleton, Tag, UnderLink } from "@/components/glide/ui";
+import { Avatar, Card, Chip, CTA, FloatingTabs, GSheet, IconBtn, RatingPill, SceneArt, SearchBar, Section, Skeleton, Tag, UnderLink } from "@/components/glide/ui";
 import { SlotPicker, type Slot } from "./SlotPicker";
 import { CATS, emojiOf, T } from "./strings";
 import { accessToken, api, ApiError, isAuthed, onAuthChange, post, save } from "./api";
@@ -161,7 +161,7 @@ function Explore() {
                   <div className="mt-1 text-[14px] font-medium text-g-mute">{(h.distanceM / 1000).toFixed(1)} {tr("km")} <span className="mx-1">•</span> {tr("fromPrice")} {h.priceCentimes / 100} {tr("mad")}</div>
                   <div className="mt-3 flex flex-wrap items-center gap-2"><RatingPill value={h.rating} count={h.jobs} />{h.tier >= 1 && <Tag tone="accent"><BadgeCheck size={12} />{tr("verified")}</Tag>}{h.availableThisWeek && <Tag tone="green">{tr("avail")}</Tag>}</div>
                 </div>
-                <ArrowBtn as-child aria-hidden tabIndex={-1} />
+                <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-g-ink text-white"><ChevronRight size={20} className="rtl:rotate-180" /></span>
               </div>
             </motion.button>
           ))}
