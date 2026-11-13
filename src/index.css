@@ -65,16 +65,16 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 
 /* ---------- Arc-style neutral system for dashboards (ops console) ---------- */
 :root {
-  --ops-bg: oklch(98.4% 0.002 90);
-  --ops-sidebar: oklch(97% 0.003 90);
+  --ops-bg: #f3f4f5;
+  --ops-sidebar: #f3f4f5;
   --ops-card: oklch(100% 0 0);
-  --ops-border: oklch(93% 0.004 90);
-  --ops-fg: oklch(21% 0.01 170);
-  --ops-muted: oklch(46% 0.012 170);
-  --ops-hover: oklch(96% 0.004 90);
-  --ops-accent: oklch(42% 0.075 170);
+  --ops-border: #e3e5e7;
+  --ops-fg: #111214;
+  --ops-muted: #5d6268;
+  --ops-hover: #ebedee;
+  --ops-accent: #111214;
   --ops-accent-fg: oklch(98% 0 0);
-  --ops-ring: oklch(42% 0.075 170 / .25);
+  --ops-ring: #11121440;
   --ops-green: oklch(62% 0.15 155); --ops-red: oklch(60% 0.19 27); --ops-amber: oklch(76% 0.15 75); --ops-blue: oklch(60% 0.17 255); --ops-violet: oklch(58% 0.2 295);
   /* text-safe variants (WCAG AA on tinted backgrounds) */
   --ops-green-fg: oklch(42% 0.12 155); --ops-red-fg: oklch(48% 0.19 27); --ops-amber-fg: oklch(42% 0.09 70); --ops-blue-fg: oklch(46% 0.17 255); --ops-violet-fg: oklch(46% 0.2 295);
@@ -98,7 +98,9 @@ body { @apply bg-background text-foreground font-sans antialiased; }
   --color-ops-green-fg: var(--ops-green-fg); --color-ops-red-fg: var(--ops-red-fg); --color-ops-amber-fg: var(--ops-amber-fg); --color-ops-blue-fg: var(--ops-blue-fg); --color-ops-violet-fg: var(--ops-violet-fg);
   --color-ops-green: var(--ops-green); --color-ops-red: var(--ops-red); --color-ops-amber: var(--ops-amber); --color-ops-blue: var(--ops-blue); --color-ops-violet: var(--ops-violet);
 }
-.ops-root { background: var(--ops-bg); color: var(--ops-fg); font-size: 13.5px; font-family: var(--font-sans); letter-spacing: -0.003em; }
+.ops-root { background: var(--ops-bg); color: var(--ops-fg); font-size: 13.5px; font-family: "Plus Jakarta Sans Variable", "Cairo Variable", var(--font-sans); letter-spacing: 0; }
+.ops-root button, .ops-root [role=button] { border-radius: 9999px; }
+.ops-root [class*="bg-ops-card"] { border-radius: 1.25rem; }
 .ops-root ::selection { background: var(--ops-ring); }
 .ops-scroll { scrollbar-width: thin; scrollbar-color: var(--ops-border) transparent; }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
