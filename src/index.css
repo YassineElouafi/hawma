@@ -105,3 +105,31 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 .skeleton { position: relative; overflow: hidden; background: var(--ops-hover); border-radius: 8px; }
 .skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--ops-fg) 6%, transparent), transparent); animation: shimmer 1.4s infinite; }
 @media (prefers-reduced-motion: reduce) { .skeleton::after { animation: none; } }
+
+/* =====================================================================
+   GLIDE design language (2026-11-13 redesign): light-grey canvas, white
+   cards, near-black pills, Plus Jakarta Sans (+ Cairo for Arabic).
+   Scope with .glide on a root element; dark ops tokens stay untouched.
+   ===================================================================== */
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/cairo";
+.glide {
+  --g-bg: #f3f4f5; --g-card: #ffffff; --g-ink: #111214; --g-mute: #5d6268; --g-faint: #a3a8ad; --g-line: #e6e8ea;
+  --g-accent: #0b5d4b; --g-accent-soft: #e3f1ed; --g-saffron: #f2b84b; --g-danger: #d9552b; --g-danger-soft: #fbe9e2; --g-green: #168a5a; --g-green-soft: #e1f4ea;
+  font-family: "Plus Jakarta Sans Variable", "Cairo Variable", system-ui, sans-serif; background: var(--g-bg); color: var(--g-ink); letter-spacing: -0.011em;
+  font-feature-settings: "ss01", "cv11";
+}
+.glide[dir="rtl"], [dir="rtl"] .glide { font-family: "Cairo Variable", "Plus Jakarta Sans Variable", system-ui, sans-serif; letter-spacing: 0; }
+.glide h1, .glide h2, .glide h3 { letter-spacing: -0.03em; font-weight: 750; }
+.glide [dir="rtl"] h1, [dir="rtl"].glide h1, [dir="rtl"].glide h2, [dir="rtl"].glide h3 { letter-spacing: 0; }
+@theme inline {
+  --color-g-bg: var(--g-bg); --color-g-card: var(--g-card); --color-g-ink: var(--g-ink); --color-g-mute: var(--g-mute); --color-g-faint: var(--g-faint); --color-g-line: var(--g-line);
+  --color-g-accent: var(--g-accent); --color-g-accent-soft: var(--g-accent-soft); --color-g-saffron: var(--g-saffron); --color-g-danger: var(--g-danger); --color-g-danger-soft: var(--g-danger-soft); --color-g-green: var(--g-green); --color-g-green-soft: var(--g-green-soft);
+  --shadow-g-card: 0 1px 2px rgb(17 18 20 / .04), 0 8px 28px rgb(17 18 20 / .07);
+  --shadow-g-float: 0 12px 40px rgb(17 18 20 / .28);
+  --radius-g: 1.75rem; --radius-g-lg: 2rem;
+}
+.glide-zellige { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='88' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.16' stroke-width='1.2'%3E%3Cpath d='M40 4l9 21 21-9-9 21 21 9-21 9 9 21-21-9-9 21-9-21-21 9 9-21-21-9 21-9-9-21 21 9z'/%3E%3Ccircle cx='40' cy='40' r='7'/%3E%3C/g%3E%3C/svg%3E"); }
+.glide-grain::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .10; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.glide .no-scrollbar { scrollbar-width: none; } .glide .no-scrollbar::-webkit-scrollbar { display: none; }
+@keyframes g-float { 0%,100% { transform: translateY(0) rotate(var(--r, -8deg)); } 50% { transform: translateY(-8px) rotate(var(--r, -8deg)); } }

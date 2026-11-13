@@ -1,42 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BadgeCheck, CalendarCheck, Home, LogOut, MapPin, Receipt, Search, Star, User, X } from "lucide-react";
-import { useI18n, LANGS, type Lang } from "@/i18n";
-import { Avatar, Card, Empty, OBtn, Pill, Segmented, Skeleton, stateTone } from "@/components/arc/primitives";
-import { Toaster, useToast } from "@/components/arc/overlays";
+import { BadgeCheck, CalendarDays, ChevronRight, Home, LogOut, MapPin, Receipt, Star, User, X, Zap, ArrowLeft, ShieldCheck, Clock } from "lucide-react";
+import { useI18n, LANGS } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { ArrowBtn, Avatar, Card, Chip, CTA, FloatingTabs, GSheet, IconBtn, RatingPill, SceneArt, SearchBar, Section, Skeleton, Tag, UnderLink } from "@/components/glide/ui";
 import { SlotPicker, type Slot } from "./SlotPicker";
+import { CATS, emojiOf, T } from "./strings";
 import { accessToken, api, ApiError, isAuthed, onAuthChange, post, save } from "./api";
 
-const CATS = [["cleaning", "✨"], ["diy", "🔧"], ["garden", "🌿"], ["tutoring", "📚"], ["errands", "🛒"], ["rides", "🚗"], ["pets", "🐾"], ["lending", "📦"]] as const;
-const emojiOf = (c: string) => CATS.find((x) => x[0] === c)?.[1] ?? "•";
-const T: Record<Lang, Record<string, string>> = {
-  fr: { tag: "Ton quartier, ton équipe.", phone: "Numéro de téléphone", send: "Recevoir le code", code: "Code à 6 chiffres", verify: "Valider", devCode: "Code de test (pilote)", bad: "Numéro marocain invalide", wrong: "Code incorrect ou expiré", net: "Connexion impossible",
-    hello: "Bonjour 👋", find: "De quoi as-tu besoin ?", search: "Rechercher un service…", all: "Tout", near: "Près de chez toi", empty: "Aucun service trouvé.", book: "Réserver", booked: "Demande envoyée ✔", cash: "Paiement cash à la fin", mad: "MAD", km: "km", verified: "Vérifié", avail: "Disponible cette semaine",
-    home: "Accueil", bookings: "Réservations", profile: "Profil", active: "En cours", past: "Terminées", noActive: "Aucune réservation en cours", noPast: "Historique vide", cancel: "Annuler", confirm: "Confirmer", rate: "Noter", rated: "Merci pour ton avis ✔", rateTitle: "Comment s'est passé le service ?", sendRating: "Envoyer",
-    language: "Langue", logout: "Se déconnecter", account: "Compte", back: "Retour", reviews: "avis", jobs: "missions", c_cleaning: "Ménage", c_diy: "Bricolage", c_garden: "Jardin", c_tutoring: "Cours", c_errands: "Courses", c_rides: "Transport", c_pets: "Animaux", c_lending: "Prêt",
-    urgent: "Besoin d'aide maintenant ?", urgentHint: "On cherche le prestataire le plus proche, en direct.", requestNow: "Lancer la demande", urgentSent: "Recherche en cours… ✔", price: "Prix (MAD)", searching: "On cherche ton prestataire…", searchingHint: "Les prestataires proches reçoivent ta demande un par un.", yourProvider: "Ton prestataire", arrivesIn: "Arrive dans", minShort: "min", away: "de toi", anon: "Prestataire Hawma", unfilledTitle: "Personne n'est disponible", unfilledHint: "Réessaie dans quelques minutes ou choisis un prestataire dans le catalogue.",
-    report: "Signaler un problème", reportTitle: "Que s'est-il passé ?", reportHint: "Décris le problème en quelques phrases. Notre équipe examine chaque signalement.", reportSend: "Envoyer le signalement", reportSent: "Signalement envoyé ✔ Paiement suspendu le temps de l'examen.", underReview: "En cours d'examen par notre équipe",
-    reschedule: "Changer l'horaire", rescheduled: "Horaire modifié ✔", chooseTime: "Choisis un créneau", noSlots: "Aucune disponibilité cette semaine", durationLabel: "Durée", hours: "h", total: "Total", slotTaken: "Ce créneau vient d'être pris, choisis-en un autre.",
-    s_Requested: "En attente", s_Accepted: "Acceptée", s_EnRoute: "En route", s_Arrived: "Arrivé", s_InProgress: "En cours", s_Completed: "Terminée", s_Confirmed: "Confirmée", s_Settled: "Réglée", s_Cancelled: "Annulée", s_Declined: "Refusée", s_Disputed: "Litige", s_Expired: "Expirée", s_Refunded: "Remboursée", s_Offered: "Proposée" },
-  ar: { tag: "حيّك، فريقك.", phone: "رقم الهاتف", send: "أرسل الرمز", code: "رمز من 6 أرقام", verify: "تأكيد", devCode: "رمز تجريبي", bad: "رقم مغربي غير صالح", wrong: "الرمز خاطئ أو منتهي", net: "تعذّر الاتصال",
-    hello: "مرحبا 👋", find: "ماذا تحتاج؟", search: "ابحث عن خدمة…", all: "الكل", near: "قريب منك", empty: "لا خدمات.", book: "احجز", booked: "تم إرسال الطلب ✔", cash: "الدفع نقدا عند الانتهاء", mad: "درهم", km: "كلم", verified: "موثّق", avail: "متاح هذا الأسبوع",
-    home: "الرئيسية", bookings: "الحجوزات", profile: "حسابي", active: "جارية", past: "منتهية", noActive: "لا حجوزات جارية", noPast: "السجل فارغ", cancel: "إلغاء", confirm: "تأكيد", rate: "قيّم", rated: "شكرا على تقييمك ✔", rateTitle: "كيف كانت الخدمة؟", sendRating: "إرسال",
-    language: "اللغة", logout: "تسجيل الخروج", account: "الحساب", back: "رجوع", reviews: "تقييم", jobs: "مهمة", c_cleaning: "تنظيف", c_diy: "إصلاحات", c_garden: "حديقة", c_tutoring: "دروس", c_errands: "مشتريات", c_rides: "نقل", c_pets: "حيوانات", c_lending: "إعارة",
-    urgent: "تحتاج مساعدة الآن؟", urgentHint: "نبحث عن أقرب مقدّم خدمة مباشرة.", requestNow: "ابدأ الطلب", urgentSent: "جارٍ البحث… ✔", price: "السعر (درهم)", searching: "نبحث عن مقدّم الخدمة…", searchingHint: "يتلقى المقدّمون القريبون طلبك واحدا تلو الآخر.", yourProvider: "مقدّم خدمتك", arrivesIn: "يصل خلال", minShort: "د", away: "منك", anon: "مقدّم حومة", unfilledTitle: "لا أحد متاح", unfilledHint: "أعد المحاولة بعد دقائق أو اختر مقدّما من الكتالوج.",
-    report: "الإبلاغ عن مشكلة", reportTitle: "ماذا حدث؟", reportHint: "صف المشكلة في جمل قليلة. يراجع فريقنا كل بلاغ.", reportSend: "إرسال البلاغ", reportSent: "تم إرسال البلاغ ✔ تم تعليق الدفع أثناء المراجعة.", underReview: "قيد المراجعة من فريقنا",
-    reschedule: "تغيير الموعد", rescheduled: "تم تغيير الموعد ✔", chooseTime: "اختر موعدا", noSlots: "لا توفر هذا الأسبوع", durationLabel: "المدة", hours: "س", total: "المجموع", slotTaken: "تم حجز هذا الموعد للتو، اختر موعدا آخر.",
-    s_Requested: "قيد الانتظار", s_Accepted: "مقبولة", s_EnRoute: "في الطريق", s_Arrived: "وصل", s_InProgress: "قيد التنفيذ", s_Completed: "منتهية", s_Confirmed: "مؤكدة", s_Settled: "مسوّاة", s_Cancelled: "ملغاة", s_Declined: "مرفوضة", s_Disputed: "نزاع", s_Expired: "منتهية", s_Refunded: "مستردة", s_Offered: "مقترحة" },
-  da: {} as Record<string, string>,
-};
-T.da = { ...T.ar, tag: "حومتك، فريقك.", send: "صيفط ليا الكود", code: "كود من 6 أرقام", wrong: "الكود غالط ولا سالا", hello: "السلام 👋", find: "شنو محتاج؟", search: "قلّب على خدمة…", all: "كلشي", cash: "خلّص كاش فالأخير", booked: "تصيفطات الطلب ✔", c_diy: "بريكولاج", c_cleaning: "نقاء", c_garden: "جردة", c_errands: "كورسات", c_lending: "تسليف", noActive: "ما كاين حتى حجز جاري", logout: "خروج", s_Requested: "كيتسنّى", s_EnRoute: "فالطريق", s_Completed: "سالات" };
-
 interface Hit { id: string; title: string; categoryId: string; priceCentimes: number; pricingModel?: string; distanceM: number; rating: number; jobs: number; tier: number; availableThisWeek: boolean; providerId: string }
-interface Booking { id: string; offerId?: string | null; durationMin?: number; localDate?: string | null; startMin?: number | null; state: string; mode?: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number }
+interface Booking { id: string; offerId?: string | null; durationMin?: number; localDate?: string | null; startMin?: number | null; categoryId?: string | null; state: string; mode?: string; providerId: string | null; customerId: string; totalCentimes: number; paymentMethod: string; lat?: number; lng?: number }
 interface Live { lat: number; lng: number; at: number }
 const distM = (aLat: number, aLng: number, bLat: number, bLng: number) => { const r = (d: number) => (d * Math.PI) / 180, R = 6371000, dLat = r(bLat - aLat), dLng = r(bLng - aLng); const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(aLat)) * Math.cos(r(bLat)) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(h))); };
 const etaMin = (m: number) => Math.max(1, Math.round(m / 333));
 const STEPS = ["Requested", "Accepted", "EnRoute", "Arrived", "InProgress", "Completed"];
+const ACTIVE = ["Requested", "Offered", "Accepted", "EnRoute", "Arrived", "InProgress"];
+const CENTER = { lat: 33.5883, lng: -7.635 };
+
+function useTr() { const { lang } = useI18n(); return (k: string) => T[lang][k] ?? T.fr[k] ?? k; }
 
 /** Realtime connection to the API gateway: follows the booking channels and keeps the last provider position per booking. */
 function useLive(ids: string[], onEvent: () => void) {
@@ -51,24 +32,34 @@ function useLive(ids: string[], onEvent: () => void) {
   useEffect(() => { const s = ws.current; if (!s || s.readyState !== 1 || !ready.current) return; for (const id of ids) if (!subscribed.current.has(id)) { s.send(JSON.stringify({ t: "sub", ch: `booking:${id}` })); subscribed.current.add(id); } });
   return live;
 }
-const ACTIVE = ["Requested", "Offered", "Accepted", "EnRoute", "Arrived", "InProgress"];
-const CENTER = { lat: 33.5883, lng: -7.635 };
+
+/* ---------- tiny toast ---------- */
+const ToastCtx = createContext<(m: string, tone?: "ok" | "err") => void>(() => {});
+const useToast = () => useContext(ToastCtx);
+function Toasts({ children }: { children: React.ReactNode }) {
+  const [items, setItems] = useState<{ id: number; m: string; tone: "ok" | "err" }[]>([]);
+  const push = useCallback((m: string, tone: "ok" | "err" = "ok") => { const id = Date.now() + Math.random(); setItems((x) => [...x, { id, m, tone }]); setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 3200); }, []);
+  return (<ToastCtx.Provider value={push}>{children}
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] mx-auto flex max-w-[480px] flex-col items-center gap-2 px-5" role="status" aria-live="polite">
+      <AnimatePresence>{items.map((t) => <motion.div key={t.id} layout initial={{ opacity: 0, y: -16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12 }} className={cn("pointer-events-auto rounded-full px-5 py-3 text-[14px] font-semibold text-white shadow-g-float", t.tone === "ok" ? "bg-g-ink" : "bg-g-danger")}>{t.m}</motion.div>)}</AnimatePresence>
+    </div></ToastCtx.Provider>);
+}
 
 export default function WebApp() {
   const [authed, setAuthed] = useState(isAuthed()); useEffect(() => { const off = onAuthChange(() => setAuthed(isAuthed())); return () => { off(); }; }, []);
   const { rtl } = useI18n();
-  return <div className="ops-root min-h-dvh" dir={rtl ? "rtl" : "ltr"}><Toaster>{authed ? <Main /> : <Login />}</Toaster></div>;
+  return <div className="glide min-h-dvh" dir={rtl ? "rtl" : "ltr"}><Toasts>{authed ? <Main /> : <Login />}</Toasts></div>;
 }
 
-function useTr() { const { lang } = useI18n(); return (k: string) => T[lang][k] ?? T.fr[k] ?? k; }
 function LangPills({ dark }: { dark?: boolean }) {
   const { lang, setLang } = useI18n();
-  return <div className={cn("inline-flex rounded-full p-0.5 text-xs font-semibold", dark ? "bg-white/10" : "bg-ops-hover")}>{LANGS.map((l) => <button key={l.id} onClick={() => setLang(l.id)} className={cn("rounded-full px-3 py-1.5 transition", lang === l.id ? "bg-saffron text-emerald-950" : dark ? "text-white/70" : "text-ops-muted")}>{l.label}</button>)}</div>;
+  return <div className={cn("inline-flex rounded-full p-1 text-[13px] font-bold", dark ? "bg-white/15 backdrop-blur" : "bg-black/5")}>{LANGS.map((l) => <button key={l.id} onClick={() => setLang(l.id)} className={cn("rounded-full px-4 py-2 transition", lang === l.id ? (dark ? "bg-white text-g-ink" : "bg-g-ink text-white") : dark ? "text-white/85" : "text-g-mute")}>{l.label}</button>)}</div>;
 }
 
+/* ---------- login ---------- */
 function Login() {
   const tr = useTr(); const [phone, setPhone] = useState(""); const [code, setCode] = useState(""); const [step, setStep] = useState<"phone" | "code">("phone"); const [busy, setBusy] = useState(false); const [err, setErr] = useState(""); const [dev, setDev] = useState("");
-  const field = "h-12 w-full rounded-xl border border-ops-border bg-ops-card px-4 text-lg outline-none transition focus:border-ops-accent focus:ring-4 focus:ring-ops-ring";
+  const field = "h-14 w-full rounded-full bg-g-bg px-6 text-[17px] font-semibold outline-none ring-2 ring-transparent transition placeholder:font-medium placeholder:text-g-mute focus:bg-white focus:ring-g-ink";
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr("");
     try {
@@ -77,40 +68,119 @@ function Login() {
     } catch (x) { setErr(x instanceof ApiError ? (x.status === 400 && step === "phone" ? tr("bad") : step === "code" ? tr("wrong") : x.message) : tr("net")); } finally { setBusy(false); }
   };
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-emerald-950">
-      <div className="zellige flex flex-1 flex-col justify-between p-6 text-white">
-        <LangPills dark />
-        <div><div className="grid h-16 w-16 place-items-center rounded-2xl bg-saffron font-display text-4xl font-bold text-emerald-950 shadow-xl">ح</div><h1 className="mt-5 font-display text-5xl font-semibold tracking-tight">Hawma</h1><p className="mt-2 text-xl font-medium text-saffron">{tr("tag")}</p></div>
-      </div>
-      <form onSubmit={submit} className="rounded-t-[2rem] bg-ops-bg p-6 pb-10">
-        <label htmlFor="w-phone" className="mb-1.5 block text-[13px] font-medium text-ops-muted">{tr("phone")}</label>
+    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-g-bg">
+      <SceneArt cat="lending" shade={false} emojiSize={170} className="relative h-[46dvh] min-h-[320px] shrink-0 rounded-b-[2.5rem] bg-g-ink">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/55" />
+        <div className="relative z-10 flex items-start justify-between p-5"><LangPills dark /></div>
+        <div className="absolute inset-x-0 bottom-0 z-10 p-7 text-white">
+          <div className="mb-5 grid h-16 w-16 place-items-center rounded-[1.4rem] bg-white font-display text-4xl font-extrabold text-g-ink shadow-g-float">ح</div>
+          <h1 className="text-[44px] leading-[1.02]">Hawma</h1><p className="mt-2 text-[19px] font-semibold text-white/90">{tr("tag")}</p>
+        </div>
+      </SceneArt>
+      <form onSubmit={submit} className="flex flex-1 flex-col px-6 pb-10 pt-7">
+        <label htmlFor="w-phone" className="mb-2 text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("phone")}</label>
         <input id="w-phone" dir="ltr" inputMode="tel" autoComplete="tel" placeholder="06 12 34 56 78" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={step === "code"} className={field} />
-        {step === "code" && <><label htmlFor="w-code" className="mb-1.5 mt-4 block text-[13px] font-medium text-ops-muted">{tr("code")}</label>
-          <input id="w-code" dir="ltr" inputMode="numeric" maxLength={6} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={cn(field, "text-center text-2xl font-semibold tracking-[0.5em]")} />
-          {dev && <Pill tone="amber" className="mt-3">{tr("devCode")}: {dev}</Pill>}</>}
-        {err && <p role="alert" className="mt-4 rounded-lg bg-ops-red/10 px-3 py-2 text-ops-red-fg">{err}</p>}
-        <OBtn variant="primary" className="mt-6 h-12 w-full rounded-full text-base" disabled={busy || (step === "phone" ? phone.length < 8 : code.length !== 6)}>{step === "phone" ? tr("send") : tr("verify")}</OBtn>
+        {step === "code" && <><label htmlFor="w-code" className="mb-2 mt-5 text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("code")}</label>
+          <input id="w-code" dir="ltr" inputMode="numeric" maxLength={6} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={cn(field, "text-center text-2xl tracking-[0.5em]")} />
+          {dev && <Tag tone="amber" className="mt-3 self-start">{tr("devCode")}: {dev}</Tag>}</>}
+        {err && <p role="alert" className="mt-4 rounded-2xl bg-g-danger-soft px-4 py-3 text-[14px] font-semibold text-g-danger">{err}</p>}
+        <CTA className="mt-auto" disabled={busy || (step === "phone" ? phone.length < 8 : code.length !== 6)}>{step === "phone" ? tr("send") : tr("verify")}</CTA>
       </form>
     </div>
   );
 }
 
+/* ---------- shell ---------- */
 type Tab = "home" | "bookings" | "profile";
 function Main() {
   const tr = useTr(); const [tab, setTab] = useState<Tab>("home");
-  const tabs: [Tab, typeof Home, string][] = [["home", Home, tr("home")], ["bookings", Receipt, tr("bookings")], ["profile", User, tr("profile")]];
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[480px] flex-col bg-ops-bg shadow-2xl">
-      <main className="flex-1 pb-24">{tab === "home" ? <Explore /> : tab === "bookings" ? <Bookings /> : <Profile />}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-[480px] border-t border-ops-border bg-ops-card/95 px-2 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
-        {tabs.map(([k, I, l]) => <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? "page" : undefined} className="flex flex-1 flex-col items-center gap-1 text-[11px] font-semibold">
-          <span className={cn("relative grid h-8 w-14 place-items-center rounded-full transition-colors", tab === k ? "text-ops-accent" : "text-ops-muted")}>{tab === k && <motion.span layoutId="wtab" className="absolute inset-0 rounded-full bg-ops-accent/12" />}<I size={20} className="relative" /></span><span className={tab === k ? "text-ops-accent" : "text-ops-muted"}>{l}</span></button>)}
-      </nav>
+    <div className="mx-auto min-h-dvh max-w-[480px] bg-g-bg">
+      <main className="pb-32">{tab === "home" ? <Explore /> : tab === "bookings" ? <Bookings /> : <Profile />}</main>
+      <FloatingTabs value={tab} onChange={setTab} items={[{ id: "home", icon: <Home size={23} />, label: tr("home") }, { id: "bookings", icon: <Receipt size={23} />, label: tr("bookings") }, { id: "profile", icon: <User size={23} />, label: tr("profile") }]} />
     </div>
   );
 }
 
-const Title = ({ sub, children }: { sub?: string; children: React.ReactNode }) => <div className="px-5 pb-2 pt-8">{sub && <div className="text-[13px] font-medium text-ops-muted">{sub}</div>}<h1 className="text-[28px] font-bold leading-tight tracking-tight">{children}</h1></div>;
+const PageTitle = ({ sub, children, right }: { sub?: string; children: React.ReactNode; right?: React.ReactNode }) => (
+  <div className="flex items-start justify-between px-5 pb-2 pt-9"><div>{sub && <div className="text-[15px] font-semibold text-g-mute">{sub}</div>}<h1 className="text-[30px] leading-[1.1]">{children}</h1></div>{right}</div>
+);
+
+/* ---------- home ---------- */
+function Explore() {
+  const tr = useTr(); const { lang } = useI18n(); const toast = useToast();
+  const [q, setQ] = useState(""); const [cat, setCat] = useState("all"); const [radius, setRadius] = useState(10); const [onlyAvail, setOnlyAvail] = useState(false); const [filters, setFilters] = useState(false);
+  const [hits, setHits] = useState<Hit[] | null>(null); const [sel, setSel] = useState<Hit | null>(null); const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    const h = setTimeout(async () => { try { const p = new URLSearchParams({ lat: String(CENTER.lat), lng: String(CENTER.lng), radiusM: String(radius * 1000), limit: "30" }); if (cat !== "all") p.set("categoryId", cat); if (q.trim()) p.set("q", q.trim()); setHits(await api(`/v1/search?${p}`, { auth: false })); } catch { setHits([]); } }, 250);
+    return () => clearTimeout(h);
+  }, [q, cat, radius]);
+  const shown = (hits ?? []).filter((h) => !onlyAvail || h.availableThisWeek);
+  const top = [...shown].sort((a, b) => b.rating - a.rating).slice(0, 5);
+  const list = showAll ? shown : shown.slice(0, 6);
+  void lang; void toast;
+  return (
+    <>
+      <PageTitle sub={tr("hello")} right={<Avatar id="me" label="H" size={52} />}>{tr("find")}</PageTitle>
+      <div className="px-5"><SearchBar value={q} onChange={setQ} placeholder={tr("search")} onFilter={() => setFilters(true)} filterLabel={tr("filters")} /></div>
+      <div className="no-scrollbar mt-5 flex gap-2.5 overflow-x-auto px-5">
+        {[["all", ""], ...CATS].map(([id, e]) => <Chip key={id} on={cat === id} onClick={() => setCat(id)}>{e && <span className="me-1.5">{e}</span>}{id === "all" ? tr("all") : tr("c_" + id)}</Chip>)}
+      </div>
+
+      <UrgentBanner />
+
+      {!hits ? <div className="mt-8 px-5"><Skeleton className="h-[360px] w-full" /></div> : top.length > 0 && (
+        <Section title={tr("topRated")}>
+          <div className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-5">
+            {top.map((h, i) => (
+              <motion.button key={h.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} onClick={() => setSel(h)} aria-label={h.title}
+                className="relative aspect-[4/5] w-[78%] shrink-0 snap-center overflow-hidden rounded-[2rem] text-start shadow-g-card active:scale-[.985]">
+                <SceneArt cat={h.categoryId} emojiSize={150} className="absolute inset-0" />
+                <span className="absolute end-4 top-4 z-10"><Tag tone="neutral" className="bg-white/20 text-white backdrop-blur">{emojiOf(h.categoryId)} {tr("c_" + h.categoryId)}</Tag></span>
+                <div className="absolute inset-x-0 bottom-0 z-10 p-5 text-white">
+                  <div className="text-[13px] font-semibold text-white/80">{(h.distanceM / 1000).toFixed(1)} {tr("km")} · {h.priceCentimes / 100} {tr("mad")}</div>
+                  <div className="mt-1 text-[26px] font-extrabold leading-[1.1] tracking-tight">{h.title}</div>
+                  <RatingPill value={h.rating} count={h.jobs} onDark className="mt-2.5" />
+                  <div className="mt-4 flex items-center justify-between rounded-full bg-black/55 p-1.5 ps-6 backdrop-blur"><span className="text-[15px] font-bold">{tr("seeMore")}</span><span className="grid h-11 w-11 place-items-center rounded-full bg-white text-g-ink"><ChevronRight size={20} className="rtl:rotate-180" /></span></div>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <Section title={tr("near")} action={shown.length > 6 && <UnderLink onClick={() => setShowAll((s) => !s)}>{tr("seeAll")}</UnderLink>}>
+        <div className="space-y-4 px-5">
+          {!hits && [0, 1].map((i) => <Skeleton key={i} className="h-72 w-full" />)}
+          {list.map((h, i) => (
+            <motion.button key={h.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.05 }} onClick={() => setSel(h)} aria-label={h.title} className="block w-full rounded-[2rem] bg-white p-2.5 text-start shadow-g-card transition active:scale-[.99]">
+              <SceneArt cat={h.categoryId} emojiSize={96} className="aspect-[16/10] w-full rounded-[1.5rem]" />
+              <div className="flex items-end justify-between gap-3 px-3.5 pb-3.5 pt-4">
+                <div className="min-w-0">
+                  <div className="truncate text-[19px] font-extrabold tracking-tight">{h.title}</div>
+                  <div className="mt-1 text-[14px] font-medium text-g-mute">{(h.distanceM / 1000).toFixed(1)} {tr("km")} <span className="mx-1">•</span> {tr("fromPrice")} {h.priceCentimes / 100} {tr("mad")}</div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2"><RatingPill value={h.rating} count={h.jobs} />{h.tier >= 1 && <Tag tone="accent"><BadgeCheck size={12} />{tr("verified")}</Tag>}{h.availableThisWeek && <Tag tone="green">{tr("avail")}</Tag>}</div>
+                </div>
+                <ArrowBtn as-child aria-hidden tabIndex={-1} />
+              </div>
+            </motion.button>
+          ))}
+          {hits && shown.length === 0 && <Card className="p-8 text-center text-g-mute">{tr("empty")}</Card>}
+        </div>
+      </Section>
+
+      <AnimatePresence>{sel && <ProviderSheet key={sel.id} hit={sel} onClose={() => setSel(null)} />}</AnimatePresence>
+      <AnimatePresence>{filters && (
+        <GSheet open onClose={() => setFilters(false)} title={tr("filters")}>
+          <h3 className="text-[22px]">{tr("filters")}</h3>
+          <div className="mt-5 text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("radiusLabel")}</div>
+          <div className="mt-3 flex flex-wrap gap-2.5">{[1, 3, 5, 10, 25].map((r) => <Chip key={r} on={radius === r} onClick={() => setRadius(r)}>{r} {tr("km")}</Chip>)}</div>
+          <button onClick={() => setOnlyAvail((v) => !v)} role="switch" aria-checked={onlyAvail} className="mt-6 flex w-full items-center justify-between rounded-full bg-white px-6 py-4 shadow-g-card"><span className="text-[15px] font-bold">{tr("onlyAvailable")}</span><span className={cn("relative h-8 w-14 rounded-full transition", onlyAvail ? "bg-g-ink" : "bg-black/15")}><span className={cn("absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all", onlyAvail ? "start-7" : "start-1")} /></span></button>
+          <CTA className="mt-6" onClick={() => setFilters(false)}>{tr("apply")}</CTA>
+        </GSheet>)}</AnimatePresence>
+    </>
+  );
+}
 
 function UrgentBanner() {
   const tr = useTr(); const toast = useToast(); const [open, setOpen] = useState(false); const [cat, setCat] = useState("errands"); const [price, setPrice] = useState("30"); const [busy, setBusy] = useState(false);
@@ -123,69 +193,52 @@ function UrgentBanner() {
   };
   return (
     <>
-      <div className="mt-5 px-5"><button onClick={() => setOpen(true)} className="flex w-full items-center gap-3 rounded-2xl bg-ops-accent p-4 text-start text-ops-accent-fg shadow-md transition hover:brightness-110 active:scale-[.99]"><span className="grid h-11 w-11 place-items-center rounded-xl bg-saffron text-2xl">⚡</span><span className="flex-1"><span className="block font-bold">{tr("urgent")}</span><span className="block text-xs opacity-75">{tr("urgentHint")}</span></span><span className="text-2xl text-saffron">›</span></button></div>
-      <AnimatePresence>{open && (<>
-        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} />
-        <motion.div role="dialog" aria-label={tr("urgent")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }} transition={{ type: "spring", damping: 30, stiffness: 320 }}>
-          <h3 className="text-xl font-bold">⚡ {tr("urgent")}</h3>
-          <div className="mt-4 flex flex-wrap gap-2">{["errands", "rides", "diy", "pets"].map((id) => <button key={id} onClick={() => setCat(id)} className={cn("rounded-full border px-3.5 py-2 text-sm font-semibold transition", cat === id ? "border-ops-accent bg-ops-accent text-ops-accent-fg" : "border-ops-border bg-ops-card")}>{emojiOf(id)} {tr("c_" + id)}</button>)}</div>
-          <label htmlFor="u-price" className="mb-1.5 mt-5 block text-[13px] font-medium text-ops-muted">{tr("price")}</label>
-          <input id="u-price" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-12 w-full rounded-xl border border-ops-border bg-ops-card px-4 text-lg outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
-          <OBtn variant="primary" className="mt-5 h-12 w-full rounded-full text-base" disabled={busy} onClick={go}>⚡ {tr("requestNow")}</OBtn>
-        </motion.div></>)}</AnimatePresence>
+      <div className="mt-6 px-5"><button onClick={() => setOpen(true)} className="flex w-full items-center gap-4 rounded-full bg-g-ink p-2.5 ps-3 text-start text-white shadow-g-card transition active:scale-[.985]">
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-g-saffron text-g-ink"><Zap size={26} fill="currentColor" /></span>
+        <span className="min-w-0 flex-1"><span className="block text-[16px] font-extrabold leading-tight">{tr("urgent")}</span><span className="block truncate text-[13px] font-medium text-white/70">{tr("urgentHint")}</span></span>
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-g-ink"><ChevronRight size={20} className="rtl:rotate-180" /></span></button></div>
+      <AnimatePresence>{open && (
+        <GSheet open onClose={() => setOpen(false)} title={tr("urgent")}>
+          <h3 className="flex items-center gap-2 text-[22px]"><Zap size={22} className="text-g-saffron" fill="currentColor" />{tr("urgent")}</h3>
+          <div className="mt-5 flex flex-wrap gap-2.5">{["errands", "rides", "diy", "pets"].map((id) => <Chip key={id} on={cat === id} onClick={() => setCat(id)}>{emojiOf(id)} {tr("c_" + id)}</Chip>)}</div>
+          <label htmlFor="u-price" className="mb-2 mt-6 block text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("price")}</label>
+          <input id="u-price" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="h-14 w-full rounded-full bg-white px-6 text-[18px] font-bold shadow-g-card outline-none ring-2 ring-transparent focus:ring-g-ink" />
+          <CTA className="mt-6" disabled={busy} onClick={go}><Zap size={18} fill="currentColor" />{tr("requestNow")}</CTA>
+        </GSheet>)}</AnimatePresence>
     </>
   );
 }
 
-function Explore() {
-  const tr = useTr(); const { lang } = useI18n(); const toast = useToast(); const [q, setQ] = useState(""); const [cat, setCat] = useState("all"); const [hits, setHits] = useState<Hit[] | null>(null); const [sel, setSel] = useState<Hit | null>(null); const [busy, setBusy] = useState(false);
-  const [dur, setDur] = useState(60); const [slot, setSlot] = useState<Slot | null>(null);
-  useEffect(() => {
-    const h = setTimeout(async () => { try { const p = new URLSearchParams({ lat: String(CENTER.lat), lng: String(CENTER.lng), radiusM: "10000", limit: "30" }); if (cat !== "all") p.set("categoryId", cat); if (q.trim()) p.set("q", q.trim()); setHits(await api(`/v1/search?${p}`, { auth: false })); } catch { setHits([]); } }, 250);
-    return () => clearTimeout(h);
-  }, [q, cat]);
-  const book = async () => { if (!sel || !slot) return; setBusy(true); try { await post("/v1/bookings", { mode: "catalogue", offerId: sel.id, slot, durationMin: dur, paymentMethod: "cash" }); toast(tr("booked")); setSel(null); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); setSlot(null); setDur((d) => d); } finally { setBusy(false); } };
-  const hourly = sel ? (sel as Hit & { pricingModel?: string }).pricingModel === "hourly" : false;
-  const price = sel ? (hourly ? Math.round((sel.priceCentimes * dur) / 60) : sel.priceCentimes) : 0;
+/* ---------- provider sheet (booking) ---------- */
+function ProviderSheet({ hit, onClose }: { hit: Hit; onClose: () => void }) {
+  const tr = useTr(); const toast = useToast(); const [dur, setDur] = useState(60); const [slot, setSlot] = useState<Slot | null>(null); const [busy, setBusy] = useState(false);
+  const hourly = hit.pricingModel === "hourly"; const price = hourly ? Math.round((hit.priceCentimes * dur) / 60) : hit.priceCentimes;
+  const book = async () => { if (!slot) return; setBusy(true); try { await post("/v1/bookings", { mode: "catalogue", offerId: hit.id, slot, durationMin: dur, paymentMethod: "cash" }); toast(tr("booked")); onClose(); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); setSlot(null); } finally { setBusy(false); } };
   return (
-    <>
-      <Title sub={tr("hello")}>{tr("find")}</Title>
-      <div className="px-5"><div className="relative"><Search size={17} className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-ops-muted" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("search")} aria-label={tr("search")} className="h-12 w-full rounded-full border border-ops-border bg-ops-card ps-11 pe-4 outline-none transition focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" /></div></div>
-      <div className="mt-5 grid grid-cols-3 gap-2.5 px-5">
-        {[["all", "✦"], ...CATS].map(([id, e]) => <button key={id} onClick={() => setCat(id)} className={cn("flex flex-col items-center gap-1.5 rounded-2xl border py-3 text-[11.5px] font-semibold transition", cat === id ? "border-ops-accent bg-ops-accent text-ops-accent-fg shadow-md" : "border-ops-border bg-ops-card hover:bg-ops-hover")}><span className="text-2xl">{e}</span>{id === "all" ? tr("all") : tr("c_" + id)}</button>)}
-      </div>
-      <UrgentBanner />
-      <h2 className="px-5 pb-3 pt-7 text-xl font-bold">{tr("near")}</h2>
-      <div className="space-y-2.5 px-5">
-        {!hits && [0, 1, 2].map((i) => <Card key={i} className="flex items-center gap-3 p-3.5"><Skeleton className="h-[52px] w-[52px] rounded-2xl" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-2/3" /><Skeleton className="h-3 w-1/3" /></div></Card>)}
-        {hits?.map((h, i) => (
-          <motion.button key={h.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} onClick={() => setSel(h)} className="flex w-full items-center gap-3 rounded-2xl border border-ops-border bg-ops-card p-3.5 text-start shadow-sm transition hover:shadow-md active:scale-[.99]">
-            <Avatar id={h.providerId} label={emojiOf(h.categoryId)} size={52} />
-            <div className="min-w-0 flex-1"><div className="truncate font-bold">{h.title}</div><div className="mt-1 flex items-center gap-2 text-xs text-ops-muted"><span className="flex items-center gap-1 font-semibold text-ops-fg"><Star size={12} className="fill-saffron text-saffron" />{h.rating.toFixed(1)}</span>({h.jobs})<span>·</span><MapPin size={12} />{(h.distanceM / 1000).toFixed(1)} {tr("km")}</div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">{h.tier >= 1 && <Pill tone="accent"><BadgeCheck size={11} />{tr("verified")}</Pill>}{h.availableThisWeek && <Pill tone="green" dot>{tr("avail")}</Pill>}</div></div>
-            <div className="text-end"><div className="text-lg font-bold text-ops-accent">{h.priceCentimes / 100}</div><div className="text-[11px] text-ops-muted">{tr("mad")}</div></div>
-          </motion.button>
-        ))}
-        {hits?.length === 0 && <Empty icon={<Search size={18} />} title={tr("empty")} />}
-      </div>
-      <AnimatePresence>{sel && (<>
-        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSel(null)} />
-        <motion.div role="dialog" aria-label={sel.title} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-5 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }} transition={{ type: "spring", damping: 30, stiffness: 320 }}>
-          <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-ops-border" />
-          <div className="flex items-center gap-3.5"><Avatar id={sel.providerId} label={emojiOf(sel.categoryId)} size={60} /><div className="flex-1"><h3 className="text-xl font-bold leading-tight">{sel.title}</h3><div className="mt-1.5 flex gap-1.5">{sel.tier >= 1 && <Pill tone="accent"><BadgeCheck size={11} />{tr("verified")}</Pill>}{sel.availableThisWeek && <Pill tone="green" dot>{tr("avail")}</Pill>}</div></div><OBtn variant="ghost" size="sm" aria-label={tr("back")} onClick={() => setSel(null)}><X size={16} /></OBtn></div>
-          <div className="mt-4 grid grid-cols-3 gap-2.5 text-center">{[[tr("reviews"), `⭐ ${sel.rating.toFixed(1)}`], [tr("jobs"), String(sel.jobs)], ["📍", `${(sel.distanceM / 1000).toFixed(1)} ${tr("km")}`]].map(([l, v]) => <Card key={l} className="py-3"><div className="text-[11.5px] text-ops-muted">{l}</div><div className="mt-0.5 font-bold">{v}</div></Card>)}</div>
-          {hourly && <div className="mt-4 flex items-center gap-2"><span className="text-sm text-ops-muted">{tr("durationLabel")}</span>{[60, 120, 180].map((d) => <button key={d} onClick={() => setDur(d)} className={cn("rounded-full border px-3 py-1 text-sm font-semibold transition", dur === d ? "border-ops-accent bg-ops-accent text-ops-accent-fg" : "border-ops-border bg-ops-card")}>{d / 60}{tr("hours")}</button>)}</div>}
-          <div className="mt-4 text-sm font-semibold">{tr("chooseTime")}</div>
-          <SlotPicker offerId={sel.id} durationMin={dur} value={slot} onChange={setSlot} emptyText={tr("noSlots")} />
-          <Card className="mt-3 divide-y divide-ops-border"><div className="flex justify-between px-4 py-3"><span className="text-ops-muted">{tr("total")}</span><b>{price / 100} {tr("mad")}</b></div><div className="flex justify-between px-4 py-3"><span className="text-ops-muted">💵</span><b>{tr("cash")}</b></div></Card>
-          <OBtn variant="primary" className="mt-5 h-12 w-full rounded-full text-base" disabled={busy || !slot} onClick={book}><CalendarCheck size={18} />{tr("book")}</OBtn>
-        </motion.div></>)}</AnimatePresence>
-    </>
+    <GSheet open onClose={onClose} title={hit.title} tall>
+      <SceneArt cat={hit.categoryId} emojiSize={130} className="relative -mx-1 h-56 rounded-[1.75rem]">
+        <IconBtn aria-label={tr("back")} onClick={onClose} className="absolute start-3 top-3 z-10"><ArrowLeft size={20} className="rtl:rotate-180" /></IconBtn>
+      </SceneArt>
+      <div className="mt-5 flex items-start justify-between gap-3"><h2 className="text-[26px] leading-[1.1]">{hit.title}</h2><RatingPill value={hit.rating} /></div>
+      <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-[14px] font-semibold text-g-mute">{hit.jobs} {tr("jobs")}</span><span className="text-g-faint">•</span><span className="inline-flex items-center gap-1 text-[14px] font-semibold text-g-mute"><MapPin size={14} />{(hit.distanceM / 1000).toFixed(1)} {tr("km")}</span>
+        {hit.tier >= 1 && <Tag tone="accent"><BadgeCheck size={12} />{tr("verified")}</Tag>}{hit.availableThisWeek && <Tag tone="green">{tr("avail")}</Tag>}</div>
+
+      {hourly && <div className="mt-6 flex items-center gap-2.5"><span className="text-[14px] font-bold text-g-mute">{tr("durationLabel")}</span>{[60, 120, 180].map((d) => <Chip key={d} on={dur === d} onClick={() => setDur(d)} className="px-4 py-2.5">{d / 60}{tr("hours")}</Chip>)}</div>}
+      <h3 className="mt-6 flex items-center gap-2 text-[18px]"><CalendarDays size={18} />{tr("chooseTime")}</h3>
+      <SlotPicker offerId={hit.id} durationMin={dur} value={slot} onChange={setSlot} emptyText={tr("noSlots")} />
+
+      <Card className="mt-6 divide-y divide-g-line"><div className="flex items-center justify-between px-5 py-4"><span className="text-[15px] font-semibold text-g-mute">{tr("total")}</span><span className="text-[20px] font-extrabold">{price / 100} {tr("mad")}</span></div><div className="flex items-center justify-between px-5 py-4"><span className="text-[15px] font-semibold text-g-mute">💵</span><span className="text-[14px] font-bold">{tr("cash")}</span></div></Card>
+      <CTA className="mt-5" disabled={busy || !slot} onClick={book}>{tr("book")}</CTA>
+    </GSheet>
   );
 }
+
+/* ---------- bookings ---------- */
+const stateTone = (s: string): "neutral" | "accent" | "green" | "danger" | "amber" => (["Cancelled", "Declined", "Disputed", "Expired"].includes(s) ? "danger" : ["Settled", "Confirmed", "Completed"].includes(s) ? "green" : ["Requested", "Offered"].includes(s) ? "amber" : "accent");
 
 function Bookings() {
-  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active"); const [resched, setResched] = useState<Booking | null>(null); const [newSlot, setNewSlot] = useState<Slot | null>(null); const [report, setReport] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
+  const tr = useTr(); const toast = useToast(); const [items, setItems] = useState<Booking[] | null>(null); const [detail, setDetail] = useState<string | null>(null); const [seg, setSeg] = useState<"active" | "past">("active");
+  const [resched, setResched] = useState<Booking | null>(null); const [newSlot, setNewSlot] = useState<Slot | null>(null); const [report, setReport] = useState<Booking | null>(null); const [reportText, setReportText] = useState(""); const [rate, setRate] = useState<Booking | null>(null); const [stars, setStars] = useState(5); const [note, setNote] = useState("");
   const load = useCallback(async () => { try { setItems(await api("/v1/bookings")); } catch { setItems([]); } }, []);
   useEffect(() => { load(); const i = setInterval(load, 10000); return () => clearInterval(i); }, [load]);
   const live = useLive((items ?? []).map((b) => b.id), load);
@@ -193,48 +246,54 @@ function Bookings() {
   const shown = (items ?? []).filter((b) => (seg === "active") === ACTIVE.includes(b.state));
   return (
     <>
-      <Title>{tr("bookings")}</Title>
-      <div className="px-5"><Segmented value={seg} onChange={setSeg} options={[{ id: "active", label: tr("active") }, { id: "past", label: tr("past") }]} /></div>
-      <div className="mt-4 space-y-2.5 px-5">
-        {!items && <Skeleton className="h-24" />}
+      <PageTitle>{tr("bookings")}</PageTitle>
+      <div className="px-5"><div className="inline-flex rounded-full bg-black/5 p-1">{(["active", "past"] as const).map((k) => <button key={k} onClick={() => setSeg(k)} aria-pressed={seg === k} className={cn("rounded-full px-6 py-2.5 text-[14px] font-bold transition", seg === k ? "bg-g-ink text-white" : "text-g-mute")}>{tr(k)}</button>)}</div></div>
+      <div className="mt-5 space-y-3.5 px-5">
+        {!items && <Skeleton className="h-36 w-full" />}
         {shown.map((b) => (
-          <Card key={b.id} className="cursor-pointer p-4 transition hover:shadow-md" onClick={() => setDetail(b.id)}>
-            <div className="flex items-center justify-between"><div><div className="font-bold">#{b.id.slice(0, 8)}</div><div className="mt-0.5 text-xs text-ops-muted">{b.totalCentimes / 100} {tr("mad")} · 💵</div></div><Pill tone={stateTone(b.state)} dot>{tr("s_" + b.state)}</Pill></div>
-            <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-              {["Requested", "Accepted"].includes(b.state) && b.offerId && b.durationMin && <OBtn size="sm" onClick={() => { setNewSlot(null); setResched(b); }}>{tr("reschedule")}</OBtn>}
-              {["Requested", "Accepted"].includes(b.state) && <OBtn size="sm" onClick={() => run(b.id, "cancel")}>{tr("cancel")}</OBtn>}
-              {b.state === "Completed" && <OBtn size="sm" variant="primary" onClick={() => run(b.id, "confirm")}>{tr("confirm")}</OBtn>}
-              {b.state === "Completed" && <OBtn size="sm" onClick={() => { setReportText(""); setReport(b); }}>⚠️ {tr("report")}</OBtn>}
-              {b.state === "Disputed" && <span className="text-xs font-semibold text-ops-amber-fg">⏳ {tr("underReview")}</span>}
-              {["Confirmed", "Settled"].includes(b.state) && <OBtn size="sm" onClick={() => { setStars(5); setNote(""); setRate(b); }}><Star size={13} />{tr("rate")}</OBtn>}
-            </div>
-          </Card>
+          <motion.div key={b.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card onClick={() => setDetail(b.id)} className="cursor-pointer p-5 transition active:scale-[.99]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3.5"><span className="grid h-14 w-14 place-items-center rounded-[1.2rem] bg-g-bg text-[26px]">{emojiOf(b.categoryId ?? "")}</span><div><div className="text-[17px] font-extrabold">#{b.id.slice(0, 8)}</div><div className="mt-0.5 text-[14px] font-medium text-g-mute">{b.totalCentimes / 100} {tr("mad")} · 💵</div></div></div>
+                <Tag tone={stateTone(b.state)}>{tr("s_" + b.state)}</Tag>
+              </div>
+              {b.state === "Disputed" && <div className="mt-3 flex items-center gap-1.5 text-[13px] font-bold text-[#8a5a00]"><Clock size={14} />{tr("underReview")}</div>}
+              <div className="mt-4 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                {["Requested", "Accepted"].includes(b.state) && b.offerId && b.durationMin && <Chip className="py-2.5" onClick={() => { setNewSlot(null); setResched(b); }}>{tr("reschedule")}</Chip>}
+                {["Requested", "Accepted"].includes(b.state) && <Chip className="py-2.5" onClick={() => run(b.id, "cancel")}>{tr("cancel")}</Chip>}
+                {b.state === "Completed" && <Chip on className="py-2.5" onClick={() => run(b.id, "confirm")}>{tr("confirm")}</Chip>}
+                {b.state === "Completed" && <Chip className="py-2.5" onClick={() => { setReportText(""); setReport(b); }}>⚠️ {tr("report")}</Chip>}
+                {["Confirmed", "Settled"].includes(b.state) && <Chip className="py-2.5" onClick={() => { setStars(5); setNote(""); setRate(b); }}><Star size={14} className="me-1 inline" />{tr("rate")}</Chip>}
+              </div>
+            </Card>
+          </motion.div>
         ))}
-        {items && shown.length === 0 && <Empty icon={<Receipt size={18} />} title={seg === "active" ? tr("noActive") : tr("noPast")} />}
+        {items && shown.length === 0 && <Card className="p-10 text-center"><div className="text-4xl">🧾</div><p className="mt-3 text-[15px] font-semibold text-g-mute">{seg === "active" ? tr("noActive") : tr("noPast")}</p></Card>}
       </div>
+
       <AnimatePresence>{detail && <BookingDetail key={detail} booking={(items ?? []).find((b) => b.id === detail) ?? null} live={live[detail]} onClose={() => setDetail(null)} onCancel={async (id) => { await run(id, "cancel"); setDetail(null); }} />}</AnimatePresence>
-      <AnimatePresence>{resched && (<>
-        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setResched(null)} />
-        <motion.div role="dialog" aria-label={tr("reschedule")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }}>
-          <h3 className="text-xl font-bold">{tr("reschedule")}</h3>
+
+      <AnimatePresence>{resched && (
+        <GSheet open onClose={() => setResched(null)} title={tr("reschedule")}>
+          <h3 className="text-[22px]">{tr("reschedule")}</h3>
           <SlotPicker offerId={resched.offerId!} durationMin={resched.durationMin!} value={newSlot} onChange={setNewSlot} emptyText={tr("noSlots")} />
-          <OBtn variant="primary" className="mt-5 h-12 w-full rounded-full text-base" disabled={!newSlot} onClick={async () => { try { await post(`/v1/bookings/${resched.id}/reschedule`, { slot: newSlot }); toast(tr("rescheduled")); load(); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); } setResched(null); }}>{tr("reschedule")}</OBtn>
-        </motion.div></>)}</AnimatePresence>
-      <AnimatePresence>{report && (<>
-        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReport(null)} />
-        <motion.div role="dialog" aria-label={tr("reportTitle")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }}>
-          <h3 className="text-xl font-bold">⚠️ {tr("reportTitle")}</h3><p className="mt-1.5 text-sm text-ops-muted">{tr("reportHint")}</p>
-          <textarea aria-label={tr("report")} value={reportText} onChange={(e) => setReportText(e.target.value)} rows={4} className="mt-4 w-full resize-none rounded-xl border border-ops-border bg-ops-card p-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
-          <OBtn variant="primary" className="mt-4 h-12 w-full rounded-full text-base" disabled={reportText.trim().length < 10} onClick={async () => { try { await post(`/v1/bookings/${report.id}/disputes`, { reason: reportText.trim() }); toast(tr("reportSent")); load(); } catch (e) { toast(e instanceof ApiError ? e.message : tr("net"), "err"); } setReport(null); }}>{tr("reportSend")}</OBtn>
-        </motion.div></>)}</AnimatePresence>
-      <AnimatePresence>{rate && (<>
-        <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRate(null)} />
-        <motion.div role="dialog" aria-label={tr("rateTitle")} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 360 }} animate={{ y: 0 }} exit={{ y: 360 }}>
-          <h3 className="text-center text-xl font-bold">{tr("rateTitle")}</h3>
-          <div className="mt-4 flex justify-center gap-1.5">{[1, 2, 3, 4, 5].map((n) => <button key={n} aria-label={`${n}`} onClick={() => setStars(n)}><Star size={36} className={n <= stars ? "fill-saffron text-saffron" : "text-ops-border"} /></button>)}</div>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="mt-4 w-full resize-none rounded-xl border border-ops-border bg-ops-card p-3 outline-none focus:border-ops-accent focus:ring-4 focus:ring-ops-ring" />
-          <OBtn variant="primary" className="mt-4 h-12 w-full rounded-full text-base" onClick={async () => { try { await post(`/v1/bookings/${rate.id}/reviews`, { rating: stars, comment: note.trim() || undefined }); toast(tr("rated")); } catch (e) { toast(e instanceof ApiError ? e.message : tr("net"), "err"); } setRate(null); }}>{tr("sendRating")}</OBtn>
-        </motion.div></>)}</AnimatePresence>
+          <CTA className="mt-6" disabled={!newSlot} onClick={async () => { try { await post(`/v1/bookings/${resched.id}/reschedule`, { slot: newSlot }); toast(tr("rescheduled")); load(); } catch (e) { toast(e instanceof ApiError && e.status === 409 ? tr("slotTaken") : e instanceof ApiError ? e.message : tr("net"), "err"); } setResched(null); }}>{tr("reschedule")}</CTA>
+        </GSheet>)}</AnimatePresence>
+
+      <AnimatePresence>{report && (
+        <GSheet open onClose={() => setReport(null)} title={tr("reportTitle")}>
+          <h3 className="text-[22px]">⚠️ {tr("reportTitle")}</h3><p className="mt-2 text-[14px] font-medium text-g-mute">{tr("reportHint")}</p>
+          <textarea aria-label={tr("report")} value={reportText} onChange={(e) => setReportText(e.target.value)} rows={4} className="mt-4 w-full resize-none rounded-[1.5rem] bg-white p-5 text-[15px] font-medium shadow-g-card outline-none ring-2 ring-transparent focus:ring-g-ink" />
+          <CTA className="mt-5" disabled={reportText.trim().length < 10} onClick={async () => { try { await post(`/v1/bookings/${report.id}/disputes`, { reason: reportText.trim() }); toast(tr("reportSent")); load(); } catch (e) { toast(e instanceof ApiError ? e.message : tr("net"), "err"); } setReport(null); }}>{tr("reportSend")}</CTA>
+        </GSheet>)}</AnimatePresence>
+
+      <AnimatePresence>{rate && (
+        <GSheet open onClose={() => setRate(null)} title={tr("rateTitle")}>
+          <h3 className="text-center text-[22px]">{tr("rateTitle")}</h3>
+          <div className="mt-5 flex justify-center gap-2">{[1, 2, 3, 4, 5].map((n) => <button key={n} aria-label={`${n}`} onClick={() => setStars(n)} className="transition active:scale-90"><Star size={42} strokeWidth={1.8} className={n <= stars ? "fill-g-saffron text-g-saffron" : "text-g-faint"} /></button>)}</div>
+          <textarea aria-label={tr("rate")} value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="mt-5 w-full resize-none rounded-[1.5rem] bg-white p-5 text-[15px] font-medium shadow-g-card outline-none ring-2 ring-transparent focus:ring-g-ink" />
+          <CTA className="mt-5" onClick={async () => { try { await post(`/v1/bookings/${rate.id}/reviews`, { rating: stars, comment: note.trim() || undefined }); toast(tr("rated")); } catch (e) { toast(e instanceof ApiError ? e.message : tr("net"), "err"); } setRate(null); }}>{tr("sendRating")}</CTA>
+        </GSheet>)}</AnimatePresence>
     </>
   );
 }
@@ -246,37 +305,40 @@ function BookingDetail({ booking, live, onClose, onCancel }: { booking: Booking 
   const searching = booking.mode === "dispatch" && booking.state === "Requested"; const unfilled = booking.mode === "dispatch" && booking.state === "Expired";
   const d = live && booking.lat != null && booking.lng != null && booking.lat !== 0 ? distM(live.lat, live.lng, booking.lat, booking.lng) : null;
   const step = Math.max(0, STEPS.indexOf(["Confirmed", "Settled"].includes(booking.state) ? "Completed" : booking.state));
-  return (<>
-    <motion.div className="fixed inset-0 z-40 bg-black/40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-    <motion.div role="dialog" aria-label={`#${booking.id.slice(0, 8)}`} className="ops-root fixed inset-x-0 bottom-0 z-50 mx-auto max-w-[480px] rounded-t-[2rem] bg-ops-bg p-6 pb-8 shadow-2xl" initial={{ y: 500 }} animate={{ y: 0 }} exit={{ y: 500 }} transition={{ type: "spring", damping: 30, stiffness: 320 }}>
-      <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-ops-border" />
+  return (
+    <GSheet open onClose={onClose} title={`#${booking.id.slice(0, 8)}`}>
       {searching ? (
-        <div className="py-2 text-center"><div className="relative mx-auto grid h-36 w-36 place-items-center">{[0, 1, 2].map((i) => <motion.span key={i} className="absolute h-28 w-28 rounded-full border-2 border-ops-accent" initial={{ scale: 0.3, opacity: 0.6 }} animate={{ scale: 1.4, opacity: 0 }} transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }} />)}<span className="grid h-16 w-16 place-items-center rounded-full bg-ops-accent text-3xl text-ops-accent-fg">📍</span></div><h3 className="mt-2 text-xl font-bold">{tr("searching")}</h3><p className="mt-1.5 text-ops-muted">{tr("searchingHint")}</p></div>
-      ) : unfilled ? <Empty icon={<MapPin size={18} />} title={tr("unfilledTitle")} hint={tr("unfilledHint")} /> : (
+        <div className="py-3 text-center"><div className="relative mx-auto grid h-40 w-40 place-items-center">{[0, 1, 2].map((i) => <motion.span key={i} className="absolute h-32 w-32 rounded-full border-2 border-g-ink" initial={{ scale: 0.3, opacity: 0.55 }} animate={{ scale: 1.4, opacity: 0 }} transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }} />)}<span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-g-ink text-white"><MapPin size={30} /></span></div><h3 className="mt-2 text-[24px]">{tr("searching")}</h3><p className="mx-auto mt-2 max-w-[280px] text-[14px] font-medium text-g-mute">{tr("searchingHint")}</p></div>
+      ) : unfilled ? <div className="py-6 text-center"><div className="text-5xl">😕</div><h3 className="mt-3 text-[22px]">{tr("unfilledTitle")}</h3><p className="mx-auto mt-2 max-w-[280px] text-[14px] font-medium text-g-mute">{tr("unfilledHint")}</p></div> : (
         <>
-          <div className="text-[13px] font-semibold text-ops-muted">{tr("yourProvider")}</div>
-          {pid && <Card className="mt-2 flex items-center gap-3.5 p-4"><Avatar id={pid} label={(prov?.name ?? "H").slice(0, 2)} size={52} /><div className="min-w-0 flex-1"><div className="truncate text-lg font-bold">{prov?.name ?? tr("anon")}</div><div className="text-sm text-ops-muted">⭐ {(prov?.rating ?? 0).toFixed(1)} · {prov?.jobs ?? 0} {tr("jobs")}</div></div>{(prov?.tier ?? 0) >= 1 && <Pill tone="accent"><BadgeCheck size={11} />{tr("verified")}</Pill>}</Card>}
-          <div className="mt-4 flex items-center justify-between"><span className="font-bold">{tr("s_" + booking.state)}</span><Pill tone={stateTone(booking.state)} dot>{tr("s_" + booking.state)}</Pill></div>
-          <div className="mt-3 flex items-center">{STEPS.map((_, n) => <div key={n} className="flex flex-1 items-center last:flex-none"><span className={cn("h-2.5 w-2.5 rounded-full", n <= step ? "bg-ops-accent" : "bg-ops-border")} />{n < STEPS.length - 1 && <span className={cn("h-0.5 flex-1", n < step ? "bg-ops-accent" : "bg-ops-border")} />}</div>)}</div>
-          {d != null && ["Accepted", "EnRoute", "Arrived"].includes(booking.state) && <Card className="mt-4 flex items-center gap-3 bg-ops-green/10 p-4"><span className="text-2xl">🛵</span><div><div className="text-[17px] font-bold">{tr("arrivesIn")} {etaMin(d)} {tr("minShort")}</div><div className="text-sm text-ops-muted">{(d / 1000).toFixed(1)} {tr("km")} {tr("away")}</div></div></Card>}
+          <div className="text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("yourProvider")}</div>
+          {pid && <Card className="mt-2.5 flex items-center gap-4 p-4"><Avatar id={pid} label={(prov?.name ?? "H").slice(0, 2)} size={58} /><div className="min-w-0 flex-1"><div className="truncate text-[19px] font-extrabold">{prov?.name ?? tr("anon")}</div><div className="mt-1"><RatingPill value={prov?.rating ?? 0} count={prov?.jobs ?? 0} /></div></div>{(prov?.tier ?? 0) >= 1 && <ShieldCheck size={24} className="text-g-accent" aria-label={tr("verified")} />}</Card>}
+          <div className="mt-6 flex items-center justify-between"><span className="text-[18px] font-extrabold">{tr("s_" + booking.state)}</span><Tag tone={stateTone(booking.state)}>{tr("s_" + booking.state)}</Tag></div>
+          <div className="mt-4 flex items-center">{STEPS.map((_, n) => <div key={n} className="flex flex-1 items-center last:flex-none"><span className={cn("h-3 w-3 rounded-full transition", n <= step ? "bg-g-ink" : "bg-black/15")} />{n < STEPS.length - 1 && <span className={cn("h-0.5 flex-1 transition", n < step ? "bg-g-ink" : "bg-black/15")} />}</div>)}</div>
+          {d != null && ["Accepted", "EnRoute", "Arrived"].includes(booking.state) && <Card className="mt-5 flex items-center gap-4 bg-g-green-soft p-5 shadow-none"><span className="text-3xl">🛵</span><div><div className="text-[18px] font-extrabold">{tr("arrivesIn")} {etaMin(d)} {tr("minShort")}</div><div className="text-[14px] font-medium text-g-mute">{(d / 1000).toFixed(1)} {tr("km")} {tr("away")}</div></div></Card>}
         </>
       )}
-      <div className="mt-4 text-center text-sm text-ops-muted">{booking.totalCentimes / 100} {tr("mad")} · 💵 {tr("cash")}</div>
-      <div className="mt-4 flex gap-2">{["Requested", "Accepted"].includes(booking.state) && <OBtn className="h-11 flex-1 rounded-full" onClick={() => onCancel(booking.id)}>{tr("cancel")}</OBtn>}<OBtn variant="ghost" className="h-11 flex-1 rounded-full" onClick={onClose}>{tr("back")}</OBtn></div>
-    </motion.div></>);
+      <div className="mt-6 text-center text-[14px] font-semibold text-g-mute">{booking.totalCentimes / 100} {tr("mad")} · 💵 {tr("cash")}</div>
+      <div className="mt-5 flex gap-3">{["Requested", "Accepted"].includes(booking.state) && <CTA tone="danger" className="h-14 flex-1" onClick={() => onCancel(booking.id)}>{tr("cancel")}</CTA>}<CTA tone="ghost" className="h-14 flex-1" onClick={onClose}>{tr("back")}</CTA></div>
+    </GSheet>
+  );
 }
 
+/* ---------- profile ---------- */
 function Profile() {
   const tr = useTr(); const [me, setMe] = useState<{ phone: string } | null>(null); const done = useRef(false);
   useEffect(() => { if (done.current) return; done.current = true; api("/v1/me").then(setMe).catch(() => {}); }, []);
   return (
     <>
-      <Title>{tr("profile")}</Title>
+      <PageTitle>{tr("profile")}</PageTitle>
       <div className="space-y-4 px-5">
-        <Card className="flex items-center gap-4 p-4"><Avatar id={me?.phone ?? "me"} label={me?.phone?.slice(-2) ?? "··"} size={56} /><div><div className="text-lg font-bold" dir="ltr">{me?.phone ?? "…"}</div><div className="text-[13px] text-ops-muted">{tr("account")}</div></div></Card>
-        <Card className="p-4"><div className="mb-3 text-[13px] font-medium text-ops-muted">{tr("language")}</div><LangPills /></Card>
-        <OBtn variant="outline" className="h-12 w-full rounded-full text-ops-red-fg" onClick={() => save(null)}><LogOut size={16} />{tr("logout")}</OBtn>
+        <SceneArt cat="lending" shade={false} emojiSize={110} className="rounded-[2rem] p-6 text-white">
+          <div className="relative z-10 flex items-center gap-4"><Avatar id={me?.phone ?? "me"} label={me?.phone?.slice(-2) ?? "··"} size={68} /><div><div className="text-[22px] font-extrabold" dir="ltr">{me?.phone ?? "…"}</div><div className="text-[14px] font-semibold text-white/80">{tr("account")}</div></div></div>
+        </SceneArt>
+        <Card className="p-5"><div className="mb-3 text-[13px] font-bold uppercase tracking-wide text-g-mute">{tr("language")}</div><LangPills /></Card>
+        <CTA tone="danger" onClick={() => save(null)}><LogOut size={18} />{tr("logout")}</CTA>
       </div>
+      <X className="hidden" />
     </>
   );
 }
