@@ -115,7 +115,7 @@ body { @apply bg-background text-foreground font-sans antialiased; }
 @import "@fontsource-variable/cairo";
 .glide {
   --g-bg: #f3f4f5; --g-card: #ffffff; --g-ink: #111214; --g-mute: #5d6268; --g-faint: #a3a8ad; --g-line: #e6e8ea;
-  --g-accent: #0b5d4b; --g-accent-soft: #e3f1ed; --g-saffron: #f2b84b; --g-danger: #d9552b; --g-danger-soft: #fbe9e2; --g-green: #168a5a; --g-green-soft: #e1f4ea;
+  --g-accent: #0b5d4b; --g-accent-soft: #e3f1ed; --g-saffron: #f2b84b; --g-danger: #b8401a; --g-danger-soft: #fbe9e2; --g-green: #0f6b45; --g-green-soft: #e1f4ea;
   font-family: "Plus Jakarta Sans Variable", "Cairo Variable", system-ui, sans-serif; background: var(--g-bg); color: var(--g-ink); letter-spacing: -0.011em;
   font-feature-settings: "ss01", "cv11";
 }
