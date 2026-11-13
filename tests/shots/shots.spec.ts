@@ -38,10 +38,10 @@ test("web app flow against a mocked API", async ({ page }, info) => {
   await expect(page.getByText(/Code de test/)).toBeVisible();
   await page.screenshot({ path: `screenshots/${info.project.name}-app-2-code.png` });
   await page.getByRole("button", { name: "Valider" }).click();
-  await expect(page.getByText("Ménage & repassage")).toBeVisible();
+  await expect(page.getByText("Ménage & repassage").first()).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `screenshots/${info.project.name}-app-3-home.png` });
-  await page.getByText("Ménage & repassage").click();
+  await page.getByText("Ménage & repassage").first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: `screenshots/${info.project.name}-app-4-detail.png` });
