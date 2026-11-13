@@ -11,8 +11,8 @@ Do not stop until every phase is done. Keep prod green: deploy only after CI is 
 - Floating black pill tab bar with white circular active indicator; chips: selected = black; "See all"/"Read more" = underlined links; rating pill = outline star + number; dark circular filter button in the search bar; black full-width CTA pill; sheets slide over the hero card.
 
 ## Phases (tick when shipped to prod and verified)
-- [ ] 1. Design system: tokens, fonts (web + mobile), shared components (web: `src/components/glide/*`, mobile: `apps/mobile/src/glide.tsx`)
-- [ ] 2. Web app `/app` redesigned (login, home hero carousel + chips, provider sheet, bookings, profile, booking detail, urgent request)
+- [x] 1. Design system: tokens, fonts (web + mobile), shared components (web: `src/components/glide/*`, mobile: `apps/mobile/src/glide.tsx`)
+- [x] 2. Web app `/app` redesigned (login, home hero carousel + chips, provider sheet, bookings, profile, booking detail, urgent request)
 - [ ] 3. Mobile app redesigned (same screens + provider mode) → publish new APK, post link
 - [ ] 4. Landing page redesigned (hero, sections, footer) in FR/AR/Darija, a11y clean
 - [ ] 5. Ops console restyled (fonts, radii, black primary, floating-pill mobile nav), keep density
